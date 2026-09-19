@@ -3,8 +3,10 @@
 Deterministic simulation testing (DST) for distributed C++ systems — seed a
 bug, replay it exact.
 
-Status: **pre-alpha**. Requires C++20 (coroutines). Not ready for real use;
-see the table below for what works today.
+Status: **pre-1.0 (0.2.0)**. The features below work and are tested on Linux,
+macOS and Windows, including under ASan, UBSan and TSan. It has not been used
+outside this repository yet, so the API, the meaning of a seed and the C ABI
+may still change between minor versions. Requires C++20 (coroutines).
 
 ## What this is
 

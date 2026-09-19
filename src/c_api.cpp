@@ -1,7 +1,5 @@
 #include "ravel/ravel.h"
 
-#include <new>
-
 #include "ravel/simulation.hpp"
 #include "ravel/version.hpp"
 
@@ -14,10 +12,12 @@ extern "C" {
 
 ravel_simulation* ravel_simulation_create(uint64_t seed) {
   try {
-    // std::nothrow only covers the allocation; the constructor can still throw.
-    return new (std::nothrow) ravel_simulation(seed);
+    // Plain new: an allocation failure (std::bad_alloc) and a throwing
+    // constructor both end up in the handler below. (std::nothrow would only
+    // cover the allocation, and mixing it with exceptions invites mistakes.)
+    return new ravel_simulation(seed);
   } catch (...) {
-    return nullptr;
+    return nullptr;  // No exception may cross the C boundary.
   }
 }
 
