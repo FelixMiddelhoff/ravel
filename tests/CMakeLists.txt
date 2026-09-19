@@ -11,6 +11,7 @@ add_executable(ravel_tests
   test_shrink.cpp
   test_shrink_passes.cpp
   test_simulation.cpp
+  test_sweep.cpp
   test_timeouts.cpp
   test_trace.cpp
 )

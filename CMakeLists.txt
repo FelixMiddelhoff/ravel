@@ -28,6 +28,7 @@ set(RAVEL_SOURCES
   src/scheduler.cpp
   src/shrink.cpp
   src/simulation.cpp
+  src/sweep.cpp
   src/trace.cpp
   src/version.cpp
 )
