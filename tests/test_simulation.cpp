@@ -12,17 +12,21 @@ namespace {
 // A small racy system: three tasks each bump a shared counter across a yield.
 // Nothing here is time- or thread-dependent, so the run is fully determined
 // by the seed.
-ravel::Result run_counter_system(std::uint64_t seed) {
-  ravel::Simulation sim(seed);
-  int counter = 0;
+void setup_counter_system(ravel::Simulation& sim) {
+  int& counter = sim.make_state<int>(0);
   for (int i = 0; i < 3; ++i) {
-    sim.scheduler().spawn("incrementer", [&]() -> ravel::Task {
+    sim.scheduler().spawn("incrementer", [&sim, &counter]() -> ravel::Task {
       const int seen = counter;
       co_await sim.scheduler().yield();
       counter = seen + 1;  // Lost update if another task ran in between.
     });
   }
-  sim.add_invariant("no_lost_updates", [&] { return counter == 3; });
+  sim.add_invariant("no_lost_updates", [&counter] { return counter == 3; });
+}
+
+ravel::Result run_counter_system(std::uint64_t seed) {
+  ravel::Simulation sim(seed);
+  setup_counter_system(sim);
   return sim.run_until_quiescent();
 }
 
@@ -130,4 +134,22 @@ TEST(version_string_matches_version_constants) {
 TEST(simulation_trace_digest_matches_golden_value) {
   const ravel::Result result = run_counter_system(1);
   CHECK(result.trace_digest == 0x6DBCA5AC75180547ULL);
+}
+
+// A run's recorded choices replay it exactly, with no help from the seed.
+TEST(simulation_replays_from_its_recorded_choices) {
+  for (std::uint64_t seed = 0; seed < 50; ++seed) {
+    ravel::Simulation original(seed);
+    setup_counter_system(original);
+    const ravel::Result first = original.run_until_quiescent();
+
+    ravel::Simulation replay(/*seed=*/999,
+                             ravel::SimulationOptions{.replay_choices = original.choices()});
+    setup_counter_system(replay);
+    const ravel::Result second = replay.run_until_quiescent();
+
+    CHECK(first.ok == second.ok);
+    CHECK(first.trace_digest == second.trace_digest);
+    CHECK(replay.choices() == original.choices());
+  }
 }

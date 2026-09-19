@@ -6,6 +6,7 @@
 #include <functional>
 #include <iosfwd>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -29,6 +30,10 @@ struct SimulationOptions {
   // When set, a failed run writes its trace here as
   // `ravel-seed-<seed>.trace.jsonl`. Empty (the default) writes no files.
   std::filesystem::path trace_dir;
+
+  // When set, the run answers every random draw from this list instead of the
+  // seed (see VirtualRng::replaying). Used to replay and shrink failures.
+  std::optional<std::vector<VirtualRng::Choice>> replay_choices;
 };
 
 struct Result {
@@ -55,6 +60,10 @@ class Simulation {
   VirtualRng& rng() noexcept { return rng_; }
   Scheduler& scheduler() noexcept { return scheduler_; }
   const Trace& trace() const noexcept { return trace_; }
+
+  // Every random choice made so far. Passing this list back as
+  // SimulationOptions::replay_choices reproduces the run without the seed.
+  const std::vector<VirtualRng::Choice>& choices() const noexcept { return rng_.choices(); }
 
   Channel& add_channel(std::string from, std::string to, FaultSpec fault);
 

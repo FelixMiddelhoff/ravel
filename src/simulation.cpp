@@ -39,7 +39,11 @@ std::string json_escape(const std::string& text) {
 }  // namespace
 
 Simulation::Simulation(std::uint64_t seed, SimulationOptions options)
-    : seed_(seed), options_(std::move(options)), rng_(seed), scheduler_(clock_, rng_, trace_) {}
+    : seed_(seed),
+      options_(std::move(options)),
+      rng_(options_.replay_choices ? VirtualRng::replaying(*options_.replay_choices)
+                                   : VirtualRng(seed)),
+      scheduler_(clock_, rng_, trace_) {}
 
 Channel& Simulation::add_channel(std::string from, std::string to, FaultSpec fault) {
   return channels_.emplace_back(channels_.size(), std::move(from), std::move(to), fault,
@@ -83,8 +87,9 @@ std::string Simulation::dump_trace() const {
   std::error_code error;
   std::filesystem::create_directories(options_.trace_dir, error);
 
+  const std::string kind = options_.replay_choices ? ".replay" : "";
   const auto path =
-      options_.trace_dir / ("ravel-seed-" + std::to_string(seed_) + ".trace.jsonl");
+      options_.trace_dir / ("ravel-seed-" + std::to_string(seed_) + kind + ".trace.jsonl");
   std::ofstream file(path);
   if (error || !file) return {};
 

@@ -35,9 +35,9 @@ VirtualClock::Tick Channel::draw_delay() {
 void Channel::send(Message message) {
   record(TraceEventKind::MessageSent);
 
-  // Draw only what the spec needs, so a fault-free channel consumes no
-  // randomness and cannot disturb the scheduler's choices.
-  if (fault_.loss_probability > 0.0 && rng_.next_double() < fault_.loss_probability) {
+  // A fault-free channel makes no draws, so it cannot disturb the
+  // scheduler's choices.
+  if (rng_.chance(fault_.loss_probability)) {
     record(TraceEventKind::MessageDropped);
     return;
   }
