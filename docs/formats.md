@@ -16,7 +16,7 @@ UTF-8, `\n` line endings.
 **Line 1, the header:**
 
 ```json
-{"format":"ravel-trace","trace_version":1,"ravel_version":"0.1.0","seed":151}
+{"format":"ravel-trace","trace_version":1,"ravel_version":"0.2.0","seed":151}
 ```
 
 | Field | Meaning |

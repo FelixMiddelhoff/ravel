@@ -5,6 +5,7 @@
 #include <string>
 
 #include "ravel/simulation.hpp"
+#include "ravel/version.hpp"
 #include "testing.hpp"
 
 namespace {
@@ -43,7 +44,8 @@ TEST(trace_is_written_as_json_lines) {
   std::ostringstream out;
   sim.write_trace(out);
   const std::string expected =
-      "{\"format\":\"ravel-trace\",\"trace_version\":1,\"ravel_version\":\"0.1.0\",\"seed\":7}\n"
+      std::string("{\"format\":\"ravel-trace\",\"trace_version\":1,\"ravel_version\":\"") +
+      ravel::version_string() + "\",\"seed\":7}\n"
       "{\"step\":0,\"time\":0,\"kind\":\"TaskSpawned\",\"id\":0,\"name\":\"say \\\"hi\\\"\"}\n"
       "{\"step\":1,\"time\":0,\"kind\":\"TaskResumed\",\"id\":0,\"name\":\"say \\\"hi\\\"\"}\n"
       "{\"step\":2,\"time\":0,\"kind\":\"MessageSent\",\"id\":0,\"name\":\"a->b\"}\n"

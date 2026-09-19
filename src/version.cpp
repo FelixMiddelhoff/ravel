@@ -2,6 +2,6 @@
 
 namespace ravel {
 
-const char* version_string() { return "0.1.0"; }
+const char* version_string() { return "0.2.0"; }
 
 }  // namespace ravel

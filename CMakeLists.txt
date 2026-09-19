@@ -1,7 +1,7 @@
 # ravel — deterministic simulation testing for C++ distributed systems.
 # SPDX-License-Identifier: MIT
 cmake_minimum_required(VERSION 3.20)
-project(ravel LANGUAGES CXX VERSION 0.1.0)
+project(ravel LANGUAGES CXX VERSION 0.2.0)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
