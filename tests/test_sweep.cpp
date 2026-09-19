@@ -1,6 +1,8 @@
 #include <cstdint>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -162,4 +164,57 @@ TEST(sweep_help_lists_the_flags) {
                            "--time-limit", "--replay", "--check-determinism"}) {
     CHECK(contains(outcome.text, flag));
   }
+}
+
+TEST(sweep_rejects_a_number_that_is_too_large) {
+  const Outcome outcome = sweep(healthy, {"--seeds", "99999999999999999999999"});
+  CHECK(outcome.status == 2);
+  CHECK(contains(outcome.text, "is too large"));
+}
+
+TEST(sweep_rejects_a_replay_file_that_is_not_a_choice_list) {
+  Scratch scratch;
+  std::filesystem::create_directories(scratch.dir(""));
+  const std::string path = scratch.dir("junk.txt");
+  std::ofstream(path) << "not a choice list";
+  const Outcome outcome = sweep(healthy, {"--replay", path});
+  CHECK(outcome.status == 2);
+  CHECK(contains(outcome.text, "not a ravel choice list"));
+}
+
+TEST(sweep_accepts_a_shrink_budget) {
+  const Outcome outcome = sweep(racy, {"--seeds", "50", "--max-shrink-attempts", "5"});
+  CHECK(outcome.status == 1);
+  CHECK(contains(outcome.text, "my_test"));
+}
+
+TEST(sweep_reads_seeds_from_the_environment) {
+#ifdef _WIN32
+  _putenv_s("RAVEL_SEEDS", "7");
+#else
+  setenv("RAVEL_SEEDS", "7", 1);
+#endif
+  const Outcome outcome = sweep(healthy, {});
+#ifdef _WIN32
+  _putenv_s("RAVEL_SEEDS", "");
+#else
+  unsetenv("RAVEL_SEEDS");
+#endif
+  CHECK(outcome.status == 0);
+  CHECK(contains(outcome.text, "7 seeds"));
+}
+
+TEST(sweep_main_names_the_program_without_its_directory_or_exe_suffix) {
+  std::ostringstream captured;
+  std::streambuf* const previous = std::cout.rdbuf(captured.rdbuf());
+  char program[] = "C:\\tools\\dir/my_prog.exe";
+  char flag[] = "--help";
+  char* argv[] = {program, flag};
+  const int status = ravel::run_sweep_main(2, argv, healthy);
+  std::cout.rdbuf(previous);
+
+  CHECK(status == 0);
+  CHECK(contains(captured.str(), "my_prog"));
+  CHECK(!contains(captured.str(), "my_prog.exe"));
+  CHECK(!contains(captured.str(), "tools"));
 }

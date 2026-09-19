@@ -99,3 +99,54 @@ TEST(failed_run_reports_when_the_trace_cannot_be_written) {
   CHECK(result.trace_path.empty());
   CHECK(result.failure.find("trace could not be written") != std::string::npos);
 }
+
+TEST(trace_escapes_control_characters_in_names) {
+  ravel::Simulation sim(1);
+  sim.scheduler().spawn(std::string("a\\b\n\r\t\x01z"), []() -> ravel::Task { co_return; });
+  sim.run_until_quiescent();
+
+  std::ostringstream out;
+  sim.write_trace(out);
+  CHECK(out.str().find("\"name\":\"a\\\\b\\n\\r\\t\\u0001z\"") != std::string::npos);
+}
+
+TEST(trace_event_kinds_have_names_and_subjects) {
+  using ravel::TraceEventKind;
+  using ravel::TraceSubject;
+  struct Row {
+    TraceEventKind kind;
+    const char* name;
+    TraceSubject subject;
+  };
+  const Row rows[] = {
+      {TraceEventKind::TaskSpawned, "TaskSpawned", TraceSubject::Task},
+      {TraceEventKind::TaskResumed, "TaskResumed", TraceSubject::Task},
+      {TraceEventKind::TaskFinished, "TaskFinished", TraceSubject::Task},
+      {TraceEventKind::TaskThrew, "TaskThrew", TraceSubject::Task},
+      {TraceEventKind::MessageSent, "MessageSent", TraceSubject::Channel},
+      {TraceEventKind::MessageDropped, "MessageDropped", TraceSubject::Channel},
+      {TraceEventKind::MessageDelivered, "MessageDelivered", TraceSubject::Channel},
+      {TraceEventKind::DiskWritten, "DiskWritten", TraceSubject::Disk},
+      {TraceEventKind::DiskSynced, "DiskSynced", TraceSubject::Disk},
+      {TraceEventKind::DiskFailed, "DiskFailed", TraceSubject::Disk},
+      {TraceEventKind::DiskCrashed, "DiskCrashed", TraceSubject::Disk},
+  };
+  for (const Row& row : rows) {
+    CHECK(std::string(ravel::to_string(row.kind)) == row.name);
+    CHECK(ravel::subject_of(row.kind) == row.subject);
+  }
+}
+
+TEST(trace_describes_disk_events_by_the_disks_name) {
+  ravel::Simulation sim(1);
+  ravel::Disk& disk = sim.add_disk("wal");
+  sim.scheduler().spawn("t", [&]() -> ravel::Task { co_await disk.write("f", 0, "x"); });
+  sim.run_until_quiescent();
+  bool named = false;
+  for (const ravel::TraceEvent& event : sim.trace().events()) {
+    if (event.kind == ravel::TraceEventKind::DiskWritten) {
+      named = sim.describe(event).find("wal") != std::string::npos;
+    }
+  }
+  CHECK(named);
+}

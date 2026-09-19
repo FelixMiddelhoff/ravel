@@ -127,3 +127,10 @@ TEST(simulation_state_outlives_its_tasks) {
   }
   CHECK(destroyed);
 }
+
+TEST(runner_fails_a_seed_whose_setup_throws_something_unnamed) {
+  const ravel::RunnerReport report =
+      ravel::run_seeds([](ravel::Simulation&) { throw 42; }, options_for(2));
+  CHECK(report.failures.size() == 200);
+  CHECK(report.failures.front().failure == "simulation threw an unknown exception");
+}

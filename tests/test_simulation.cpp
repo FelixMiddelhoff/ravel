@@ -154,3 +154,15 @@ TEST(simulation_replays_from_its_recorded_choices) {
     CHECK(replay.choices() == original.choices());
   }
 }
+
+TEST(simulation_reports_a_task_that_throws_something_unnamed) {
+  ravel::Simulation sim(1);
+  sim.scheduler().spawn("odd", []() -> ravel::Task {
+    throw 42;
+    co_return;
+  });
+
+  const ravel::Result result = sim.run_until_quiescent();
+  CHECK(!result.ok);
+  CHECK(result.failure == "task 'odd' threw: unknown exception");
+}

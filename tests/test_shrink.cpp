@@ -229,3 +229,12 @@ TEST(runner_can_shrink_the_first_failure) {
   no_shrink.seed_count = 200;
   CHECK(!ravel::run_seeds(setup_lossy_link_system, no_shrink).shrunk.has_value());
 }
+
+TEST(shrink_reports_a_setup_that_throws) {
+  const ravel::ShrinkResult named =
+      ravel::shrink([](ravel::Simulation&) { throw std::runtime_error("bad setup"); }, 3);
+  CHECK(named.original.failure == "simulation threw: bad setup");
+
+  const ravel::ShrinkResult unnamed = ravel::shrink([](ravel::Simulation&) { throw 42; }, 3);
+  CHECK(unnamed.original.failure == "simulation threw an unknown exception");
+}
