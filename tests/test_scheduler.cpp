@@ -2,6 +2,7 @@
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "ravel/clock.hpp"
@@ -164,4 +165,35 @@ TEST(scheduler_records_the_task_lifecycle_in_the_trace) {
     CHECK(events[2].kind == ravel::TraceEventKind::TaskFinished);
   }
   CHECK(h.scheduler.task_name(0) == "only");
+}
+
+TEST(scheduler_rejects_use_from_another_thread_while_running) {
+  Harness h(1);
+  bool rejected = false;
+  h.scheduler.spawn("task_that_starts_a_thread", [&]() -> ravel::Task {
+    std::thread intruder([&] {
+      try {
+        h.scheduler.spawn("intruder", []() -> ravel::Task { co_return; });
+      } catch (const std::logic_error&) {
+        rejected = true;
+      }
+    });
+    intruder.join();
+    co_return;
+  });
+  const ravel::RunReport report = h.scheduler.run_until_quiescent(kNoLimit);
+  CHECK(report.status == ravel::RunStatus::Completed);
+  CHECK(rejected);
+}
+
+TEST(scheduler_can_be_set_up_on_one_thread_and_run_on_another) {
+  Harness h(1);
+  int ran = 0;
+  h.scheduler.spawn("task", [&]() -> ravel::Task {
+    ++ran;
+    co_return;
+  });
+  std::thread runner([&] { h.scheduler.run_until_quiescent(kNoLimit); });
+  runner.join();
+  CHECK(ran == 1);
 }

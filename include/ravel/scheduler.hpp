@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <coroutine>
 #include <cstddef>
 #include <cstdint>
@@ -8,6 +9,7 @@
 #include <functional>
 #include <queue>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "ravel/clock.hpp"
@@ -47,6 +49,11 @@ struct RunReport {
 // depends only on the seed: never on wall-clock timing, thread scheduling, or
 // hash-table iteration order. That is what makes a failing seed replayable,
 // and what explores different interleavings across different seeds.
+//
+// A simulation is single-threaded: while it runs, spawn() and call_after() (and
+// so Channel::send and Disk operations) throw std::logic_error if called from
+// any thread other than the one running it. That catches code under test that
+// starts real threads and touches the simulation from them.
 //
 // Time is virtual. When every task is asleep the clock jumps straight to the
 // earliest wake-up, so simulated waiting costs no real time.
@@ -169,6 +176,9 @@ class Scheduler {
   std::priority_queue<Timer, std::vector<Timer>, DueLater> timers_;
   std::uint64_t next_timer_sequence_ = 0;
   TaskId current_task_ = 0;  // Valid only while a task is being resumed.
+
+  void require_running_thread(const char* operation) const;
+  std::atomic<std::thread::id> running_thread_{};  // Empty unless a run is in progress.
 };
 
 }  // namespace ravel

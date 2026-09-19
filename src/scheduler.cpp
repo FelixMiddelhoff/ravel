@@ -1,6 +1,7 @@
 #include "ravel/scheduler.hpp"
 
 #include <limits>
+#include <stdexcept>
 #include <utility>
 
 namespace ravel {
@@ -19,7 +20,17 @@ std::string describe(const std::exception_ptr& error) {
 
 }  // namespace
 
+void Scheduler::require_running_thread(const char* operation) const {
+  const std::thread::id runner = running_thread_.load();
+  if (runner != std::thread::id() && runner != std::this_thread::get_id()) {
+    throw std::logic_error(std::string("Scheduler::") + operation +
+                           " called from a thread other than the one running the simulation; "
+                           "simulations are single-threaded");
+  }
+}
+
 void Scheduler::spawn(std::string name, TaskFactory factory) {
+  require_running_thread("spawn");
   const TaskId id = slots_.size();
   TaskSlot& slot = slots_.emplace_back(std::move(name), std::move(factory));
   slot.task = slot.factory();  // Called on the stored factory, see TaskFactory.
@@ -28,6 +39,7 @@ void Scheduler::spawn(std::string name, TaskFactory factory) {
 }
 
 void Scheduler::call_after(VirtualClock::Tick delay, std::function<void()> action) {
+  require_running_thread("call_after");
   constexpr auto kMaxTick = std::numeric_limits<VirtualClock::Tick>::max();
   const VirtualClock::Tick now = clock_.now();
   const VirtualClock::Tick due = delay > kMaxTick - now ? kMaxTick : now + delay;
@@ -78,6 +90,15 @@ std::exception_ptr Scheduler::resume_task(TaskId id) {
 
 RunReport Scheduler::run_until_quiescent(std::uint64_t max_steps) {
   RunReport report;
+
+  // Forget the running thread however this function is left.
+  struct RunningThread {
+    std::atomic<std::thread::id>& slot;
+    explicit RunningThread(std::atomic<std::thread::id>& s) : slot(s) {
+      slot.store(std::this_thread::get_id());
+    }
+    ~RunningThread() { slot.store(std::thread::id()); }
+  } running(running_thread_);
 
   while (has_pending_work()) {
     if (runnable_.empty()) {
