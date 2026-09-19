@@ -64,6 +64,35 @@ if(RAVEL_SHARED)
   set_target_properties(ravel_shared PROPERTIES OUTPUT_NAME ravel)
   ravel_configure_library(ravel_shared)
   target_compile_definitions(ravel_shared PRIVATE RAVEL_BUILD_SHARED PUBLIC RAVEL_SHARED)
+  set_target_properties(ravel_shared PROPERTIES EXPORT_NAME shared)  # ravel::shared
+endif()
+
+# Installation, and a CMake package so consumers can find_package(ravel) and
+# link ravel::ravel (or ravel::shared). Skipped when ravel is a subdirectory.
+if(RAVEL_STANDALONE)
+  include(GNUInstallDirs)
+  include(CMakePackageConfigHelpers)
+
+  set(RAVEL_INSTALL_TARGETS ravel)
+  if(RAVEL_SHARED)
+    list(APPEND RAVEL_INSTALL_TARGETS ravel_shared)
+  endif()
+
+  install(TARGETS ${RAVEL_INSTALL_TARGETS} EXPORT ravelTargets)
+  install(DIRECTORY include/ravel DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+  install(EXPORT ravelTargets NAMESPACE ravel:: DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/ravel)
+
+  configure_package_config_file(cmake/ravelConfig.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/ravelConfig.cmake
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/ravel)
+  write_basic_package_version_file(
+    ${CMAKE_CURRENT_BINARY_DIR}/ravelConfigVersion.cmake
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMinorVersion)  # Pre-1.0: minor versions may break.
+  install(FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/ravelConfig.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/ravelConfigVersion.cmake
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/ravel)
 endif()
 
 if(RAVEL_BUILD_TESTS)
