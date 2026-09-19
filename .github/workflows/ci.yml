@@ -61,6 +61,10 @@ jobs:
             --print-summary --txt coverage/summary.txt \
             --html-details coverage/index.html --json-summary coverage/summary.json
           cat coverage/summary.txt
+          # Branches that only exist for exceptions and unreachable code drown
+          # out the real ones; this view leaves them out.
+          gcovr --root . --filter 'src/' --filter 'include/ravel/'             --gcov-ignore-parse-errors=negative_hits.warn_once_per_file             --exclude-throw-branches --exclude-unreachable-branches             --txt-metric branch --txt coverage/branches.txt             --json-summary coverage/branch-summary.json
+          cat coverage/branches.txt
       - name: Check the coverage floor
         # Raise the floor when coverage improves; never lower it to make CI pass.
         env:
