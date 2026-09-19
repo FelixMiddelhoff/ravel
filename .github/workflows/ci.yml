@@ -86,3 +86,30 @@ jobs:
         with:
           name: coverage-report
           path: coverage
+
+  fuzz-smoke:
+    # A minute per target: enough to catch a fresh regression, not to find a deep
+    # bug. For hours, start the "fuzz" workflow by hand.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [read_choices, sweep_args]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build
+        run: |
+          cmake -S . -B build-fuzz -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++ \
+            -DRAVEL_FUZZ=ON -DRAVEL_BUILD_TESTS=OFF -DRAVEL_BUILD_BENCH=OFF -DRAVEL_BUILD_EXAMPLES=OFF
+          cmake --build build-fuzz --target fuzz_${{ matrix.target }}
+      - name: Fuzz
+        # Works on a copy so the committed corpus stays as it is.
+        run: |
+          cp -r fuzz/corpus/${{ matrix.target }} work-corpus
+          build-fuzz/fuzz/fuzz_${{ matrix.target }} -max_total_time=60 -timeout=10 \
+            -rss_limit_mb=2048 -artifact_prefix=crash- work-corpus
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: fuzz-crash-${{ matrix.target }}
+          path: crash-*

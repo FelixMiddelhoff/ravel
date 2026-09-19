@@ -1,0 +1,37 @@
+name: fuzz
+# Long fuzzing runs. Start by hand; a crash is uploaded as an artifact. Copy the
+# crashing input into fuzz/corpus/<target>/ together with the fix.
+on:
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: Minutes per target
+        default: "60"
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 400
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [read_choices, sweep_args]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build
+        run: |
+          cmake -S . -B build-fuzz -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++ \
+            -DRAVEL_FUZZ=ON -DRAVEL_BUILD_TESTS=OFF -DRAVEL_BUILD_BENCH=OFF -DRAVEL_BUILD_EXAMPLES=OFF
+          cmake --build build-fuzz --target fuzz_${{ matrix.target }}
+      - name: Fuzz
+        run: |
+          cp -r fuzz/corpus/${{ matrix.target }} work-corpus
+          build-fuzz/fuzz/fuzz_${{ matrix.target }} -max_total_time=$(( ${{ inputs.minutes }} * 60 )) \
+            -timeout=10 -rss_limit_mb=2048 -artifact_prefix=crash- work-corpus
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fuzz-${{ matrix.target }}
+          path: |
+            crash-*
+            work-corpus
