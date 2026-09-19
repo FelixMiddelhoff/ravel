@@ -96,7 +96,16 @@ def output_text(build_dir: Path, kind: str, arg: str) -> str:
 
     with tempfile.TemporaryDirectory() as scratch:
         cwd = scratch if kind == "output" else str(ROOT)
-        run = subprocess.run(command, cwd=cwd, capture_output=True, text=True, encoding="utf-8")
+        # The docs show what a person sees at a terminal, so hide the environment
+        # that changes the output: on GitHub Actions ravel adds error annotations.
+        environment = {
+            name: value
+            for name, value in os.environ.items()
+            if name != "GITHUB_ACTIONS" and not name.startswith("RAVEL_")
+        }
+        run = subprocess.run(
+            command, cwd=cwd, capture_output=True, text=True, encoding="utf-8", env=environment
+        )
     if run.returncode not in ok_statuses:
         sys.exit(f"error: '{arg}' exited with status {run.returncode}:\n{run.stdout}{run.stderr}")
     lines = run.stdout.replace("\r\n", "\n").split("\n")
