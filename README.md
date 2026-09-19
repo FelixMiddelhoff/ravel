@@ -1,5 +1,12 @@
 # ravel
 
+[![ci](https://github.com/FelixMiddelhoff/ravel/actions/workflows/ci.yml/badge.svg)](https://github.com/FelixMiddelhoff/ravel/actions/workflows/ci.yml)
+[![codeql](https://github.com/FelixMiddelhoff/ravel/actions/workflows/codeql.yml/badge.svg)](https://github.com/FelixMiddelhoff/ravel/actions/workflows/codeql.yml)
+[![docs](https://github.com/FelixMiddelhoff/ravel/actions/workflows/docs.yml/badge.svg)](https://github.com/FelixMiddelhoff/ravel/actions/workflows/docs.yml)
+[![packaging](https://github.com/FelixMiddelhoff/ravel/actions/workflows/packaging.yml/badge.svg)](https://github.com/FelixMiddelhoff/ravel/actions/workflows/packaging.yml)
+[![release](https://img.shields.io/github/v/release/FelixMiddelhoff/ravel?include_prereleases)](https://github.com/FelixMiddelhoff/ravel/releases)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Deterministic simulation testing (DST) for distributed C++ systems — seed a
 bug, replay it exact.
 
@@ -182,8 +189,9 @@ simulation. Never use it for keys, nonces or tokens.
   saved reproducers.
 - [docs/example-kv.md](docs/example-kv.md): a key-value store and a power cut: two
   storage bugs found, shrunk and read.
-- API reference: `doxygen docs/Doxyfile` (or the `ravel_docs` CMake target),
-  output in `build-docs/html`.
+- [API reference](https://felixmiddelhoff.github.io/ravel/) (also: `doxygen docs/Doxyfile`,
+  or the `ravel_docs` CMake target, output in `build-docs/html`).
+- [CHANGELOG.md](CHANGELOG.md): what changed in each release.
 - [docs/formats.md](docs/formats.md): the trace file, the choices file, and how
   the trace digest is computed.
 - [docs/abi-policy.md](docs/abi-policy.md): what may change in the C ABI.

@@ -1,0 +1,49 @@
+name: pages
+on:
+  push:
+    branches: [ main, master ]
+    paths: [ 'include/**', 'docs/**', 'README.md', 'CHANGELOG.md', 'CONTRIBUTING.md', '.github/workflows/pages.yml' ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install Doxygen
+        run: sudo apt-get update && sudo apt-get install -y doxygen
+      - name: Build the API reference
+        run: |
+          doxygen docs/Doxyfile 2> doxygen-warnings.txt
+          cat doxygen-warnings.txt
+          # Every public class, member and enumerator needs a doc comment. (Links from
+          # the markdown docs to source files are not resolvable in the site and are
+          # not errors.)
+          if grep -q "/include/ravel/" doxygen-warnings.txt; then
+            echo "::error::Undocumented public API in include/ravel (see the warnings above)"
+            exit 1
+          fi
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build-docs/html
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

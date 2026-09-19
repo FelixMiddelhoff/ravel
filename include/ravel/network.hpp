@@ -17,45 +17,51 @@ namespace ravel {
 using ChannelId = std::size_t;
 using Message = std::string;
 
-// Injectable fault behavior for a Channel. Every decision (drop? how much
-// latency?) is drawn from the Simulation's VirtualRng, so it replays
-// identically for a given seed.
+/// Injectable fault behavior for a Channel. Every decision (drop? how much
+/// latency?) is drawn from the Simulation's VirtualRng, so it replays
+/// identically for a given seed.
 struct FaultSpec {
-  double loss_probability = 0.0;  // In [0, 1]: chance that a message is dropped.
+  double loss_probability = 0.0;  ///< In [0, 1]: chance that a message is dropped.
+  /// The lower end of the delay range: a delivered message takes at least this many ticks.
   VirtualClock::Tick latency_min = 0;
-  VirtualClock::Tick latency_max = 0;  // Delay is uniform in [min, max].
-  // Off: messages arrive in the order they were sent (delays are raised so
-  // none overtakes an earlier one). On: a message with a short delay may
-  // overtake an earlier one with a long delay.
+  VirtualClock::Tick latency_max = 0;  ///< Delay is uniform in [min, max].
+  /// Off: messages arrive in the order they were sent (delays are raised so
+  /// none overtakes an earlier one). On: a message with a short delay may
+  /// overtake an earlier one with a long delay.
   bool allow_reorder = false;
 };
 
-// A virtual, one-way, in-process channel between two named endpoints. There
-// are no real sockets: send() schedules delivery on the Scheduler, so a run
-// never depends on actual network conditions.
-//
-//   channel.send("ping");                           // never blocks
-//   ravel::Message m = co_await channel.receive();  // blocks until one arrives
-//   auto maybe = co_await channel.receive_within(50);  // or gives up after 50 ticks
-//
-// At most one task may wait to receive at a time.
+/// A virtual, one-way, in-process channel between two named endpoints. There
+/// are no real sockets: send() schedules delivery on the Scheduler, so a run
+/// never depends on actual network conditions.
+///
+///   channel.send("ping");                           // never blocks
+///   ravel::Message m = co_await channel.receive();  // blocks until one arrives
+///   auto maybe = co_await channel.receive_within(50);  // or gives up after 50 ticks
+///
+/// At most one task may wait to receive at a time.
 class Channel {
  public:
+  /// Created by Simulation::add_channel; you do not construct one yourself.
   Channel(ChannelId id, std::string from, std::string to, FaultSpec fault,
           Scheduler& scheduler, VirtualRng& rng, Trace& trace);
 
-  // Pending deliveries refer to this object, so it must never move.
+  /// Pending deliveries refer to this object, so it must never move.
   Channel(const Channel&) = delete;
   Channel& operator=(const Channel&) = delete;
 
+  /// The sending endpoint's name.
   const std::string& from() const noexcept { return from_; }
+  /// The receiving endpoint's name.
   const std::string& to() const noexcept { return to_; }
+  /// The fault settings this channel was created with.
   const FaultSpec& fault() const noexcept { return fault_; }
 
-  // Applies the fault spec: the message is dropped, or delivered after a
-  // random delay.
+  /// Applies the fault spec: the message is dropped, or delivered after a
+  /// random delay.
   void send(Message message);
 
+  /// What `receive()` returns. It is only ever `co_await`ed.
   class ReceiveAwaiter {
    public:
     bool await_ready() const noexcept { return false; }
@@ -68,10 +74,11 @@ class Channel {
     Channel& channel_;
   };
 
+  /// Waits for the next message: `ravel::Message m = co_await channel.receive();`
   [[nodiscard]] ReceiveAwaiter receive() noexcept { return ReceiveAwaiter(*this); }
 
-  // Like ReceiveAwaiter, but gives up: yields nothing if no message has
-  // arrived once `timeout` virtual ticks have passed.
+  /// Like ReceiveAwaiter, but gives up: yields nothing if no message has
+  /// arrived once `timeout` virtual ticks have passed.
   class TimedReceiveAwaiter {
    public:
     bool await_ready() const noexcept { return false; }
@@ -86,14 +93,16 @@ class Channel {
     VirtualClock::Tick timeout_;
   };
 
+  /// Waits up to `timeout` ticks for a message: `auto m = co_await channel.receive_within(50);`
+  /// The result is empty if none arrived in time.
   [[nodiscard]] TimedReceiveAwaiter receive_within(VirtualClock::Tick timeout) noexcept {
     return TimedReceiveAwaiter(*this, timeout);
   }
 
-  // Throws away messages that were delivered but not yet received. Messages
-  // still in flight are unaffected. Meant for the receiving task itself, for
-  // instance when it restarts after a simulated crash; clearing under a
-  // receive that is about to return a message fails that receive.
+  /// Throws away messages that were delivered but not yet received. Messages
+  /// still in flight are unaffected. Meant for the receiving task itself, for
+  /// instance when it restarts after a simulated crash; clearing under a
+  /// receive that is about to return a message fails that receive.
   void clear_inbox() { inbox_.clear(); }
  private:
   void deliver(Message message);
@@ -110,15 +119,15 @@ class Channel {
   VirtualRng& rng_;
   Trace& trace_;
 
-  std::deque<Message> inbox_;                // Delivered, not yet received.
+  std::deque<Message> inbox_;                ///< Delivered, not yet received.
 
   struct Waiter {
     TaskId task;
-    std::uint64_t id;  // Tells this wait apart from later ones, for timeouts.
+    std::uint64_t id;  ///< Tells this wait apart from later ones, for timeouts.
   };
-  std::optional<Waiter> waiting_receiver_;   // Task blocked in receive().
+  std::optional<Waiter> waiting_receiver_;   ///< Task blocked in receive().
   std::uint64_t waits_started_ = 0;
-  VirtualClock::Tick last_delivery_at_ = 0;  // Keeps order when reordering is off.
+  VirtualClock::Tick last_delivery_at_ = 0;  ///< Keeps order when reordering is off.
 };
 
 }  // namespace ravel
