@@ -1,0 +1,35 @@
+# ravel — CodeQL static analysis.
+# SPDX-License-Identifier: MIT
+name: codeql
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  schedule:
+    - cron: '23 3 * * 1' # Mondays, 03:23 UTC — off the hour
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: c-cpp
+          queries: security-and-quality
+
+      - name: Configure
+        run: cmake -S . -B build -DRAVEL_BUILD_TESTS=OFF -DRAVEL_BUILD_BENCH=OFF -DRAVEL_BUILD_EXAMPLES=OFF
+      - name: Build
+        run: cmake --build build --target ravel
+
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:c-cpp"

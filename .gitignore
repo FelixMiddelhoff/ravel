@@ -1,0 +1,13 @@
+/build/
+/build-*/
+/out/
+/.cache/
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+compile_commands.json
+__pycache__/

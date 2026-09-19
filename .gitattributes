@@ -1,0 +1,6 @@
+# ravel — normalize line endings to LF for all text files, regardless of the
+# checking-out platform's git autocrlf setting.
+* text=auto eol=lf
+
+*.png binary
+*.ico binary

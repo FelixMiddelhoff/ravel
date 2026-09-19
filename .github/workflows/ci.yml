@@ -1,0 +1,41 @@
+name: ci
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        config: [Release, Debug]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=${{ matrix.config }} -DRAVEL_SHARED=ON
+      - name: Build
+        run: cmake --build build --config ${{ matrix.config }}
+      - name: Test
+        # The golden RNG-stream and trace-digest tests fail if any platform
+        # disagrees with the others about what a seed produces.
+        run: ctest --test-dir build -C ${{ matrix.config }} --output-on-failure
+
+  sanitizers:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer: [address, undefined]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Configure
+        run: |
+          cmake -S . -B build-san -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=${{ matrix.sanitizer }} -fno-omit-frame-pointer"
+      - name: Build
+        run: cmake --build build-san
+      - name: Test
+        run: ctest --test-dir build-san --output-on-failure
