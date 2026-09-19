@@ -39,3 +39,26 @@ jobs:
         run: cmake --build build-san
       - name: Test
         run: ctest --test-dir build-san --output-on-failure
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install gcovr
+        run: pip install gcovr
+      - name: Configure
+        run: cmake -S . -B build-cov -DCMAKE_BUILD_TYPE=Debug -DRAVEL_COVERAGE=ON
+      - name: Build
+        run: cmake --build build-cov
+      - name: Test
+        run: ctest --test-dir build-cov --output-on-failure
+      - name: Report
+        # Only the library counts: tests, examples and benches would inflate it.
+        run: |
+          mkdir coverage
+          gcovr --root . --filter 'src/' --filter 'include/ravel/'             --print-summary --txt coverage/summary.txt             --html-details coverage/index.html --json-summary coverage/summary.json
+          cat coverage/summary.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage

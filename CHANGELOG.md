@@ -8,6 +8,11 @@ is listed under "Changed" or "Removed" in the release that makes it.
 
 ## [Unreleased]
 
+### Added
+
+- CMake option `RAVEL_COVERAGE` and a CI job that builds with coverage, runs the
+  tests and uploads an HTML report.
+
 ## [0.3.0] - 2026-09-19
 
 ### Added

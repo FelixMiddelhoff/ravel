@@ -17,6 +17,7 @@ option(RAVEL_SHARED         "Also build a shared library"  OFF)
 option(RAVEL_BUILD_TESTS    "Build the test suite"         ${RAVEL_STANDALONE})
 option(RAVEL_BUILD_BENCH    "Build the perf bench"         ${RAVEL_STANDALONE})
 option(RAVEL_BUILD_EXAMPLES "Build the example programs"   ${RAVEL_STANDALONE})
+option(RAVEL_COVERAGE       "Instrument for line/branch coverage (GCC or Clang)" OFF)
 
 set(RAVEL_SOURCES
   src/c_api.cpp
@@ -46,6 +47,12 @@ function(ravel_configure_library target)
     target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic)
   endif()
   target_link_libraries(${target} PUBLIC Threads::Threads)
+  if(RAVEL_COVERAGE)
+    # Public, so the test programs that link the library are instrumented and
+    # write their counters at exit.
+    target_compile_options(${target} PUBLIC --coverage -O0 -g)
+    target_link_options(${target} PUBLIC --coverage)
+  endif()
 endfunction()
 
 find_package(Threads REQUIRED)
