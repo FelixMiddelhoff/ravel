@@ -8,7 +8,7 @@ from conan.tools.files import copy, rmdir
 
 class RavelConan(ConanFile):
     name = "ravel"
-    version = "0.2.0"
+    version = "0.3.0"
     license = "MIT"
     url = "https://github.com/FelixMiddelhoff/ravel"
     homepage = "https://github.com/FelixMiddelhoff/ravel"

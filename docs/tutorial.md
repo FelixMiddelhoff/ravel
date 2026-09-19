@@ -36,7 +36,7 @@ project(my_tests LANGUAGES CXX)
 include(FetchContent)
 FetchContent_Declare(ravel
   GIT_REPOSITORY https://github.com/FelixMiddelhoff/ravel.git
-  GIT_TAG        v0.2.0)
+  GIT_TAG        v0.3.0)
 FetchContent_MakeAvailable(ravel)
 
 add_executable(my_test my_test.cpp)

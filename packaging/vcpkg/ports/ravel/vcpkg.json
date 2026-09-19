@@ -1,6 +1,6 @@
 {
   "name": "ravel",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Deterministic simulation testing for C++20: seeded scheduling, virtual time, network and disk faults, shrinking and replay.",
   "homepage": "https://github.com/FelixMiddelhoff/ravel",
   "license": "MIT",

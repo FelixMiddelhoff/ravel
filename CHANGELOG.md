@@ -8,6 +8,8 @@ is listed under "Changed" or "Removed" in the release that makes it.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-19
+
 ### Added
 
 - `ravel::run_sweep_main` and `ravel::run_sweep`: a ready-made command line for
@@ -28,7 +30,8 @@ is listed under "Changed" or "Removed" in the release that makes it.
 ### Changed
 
 - Public headers use Doxygen doc comments (`///`), so the API reference shows the
-  descriptions. No behavior change.
+  descriptions. No behavior change: **seeds and choice lists from 0.2.0 still mean
+  the same runs.**
 
 ## [0.2.0] - 2026-09-19
 
@@ -72,6 +75,7 @@ is listed under "Changed" or "Removed" in the release that makes it.
   with crashes and torn writes, a parallel multi-seed runner, choice-stream
   shrinking with replayable reproducers, JSON Lines traces, and a small C ABI.
 
-[Unreleased]: https://github.com/FelixMiddelhoff/ravel/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/FelixMiddelhoff/ravel/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/FelixMiddelhoff/ravel/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/FelixMiddelhoff/ravel/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/FelixMiddelhoff/ravel/releases/tag/v0.1.0
