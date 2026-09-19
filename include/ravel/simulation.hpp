@@ -2,7 +2,9 @@
 
 #include <cstdint>
 #include <deque>
+#include <filesystem>
 #include <functional>
+#include <iosfwd>
 #include <string>
 #include <utility>
 #include <vector>
@@ -22,6 +24,10 @@ struct SimulationOptions {
   // Upper bound on scheduler steps, so a livelocked system fails the run
   // instead of hanging it.
   std::uint64_t max_steps = 1'000'000;
+
+  // When set, a failed run writes its trace here as
+  // `ravel-seed-<seed>.trace.jsonl`. Empty (the default) writes no files.
+  std::filesystem::path trace_dir;
 };
 
 struct Result {
@@ -30,6 +36,7 @@ struct Result {
   std::string failure;             // What went wrong; empty when ok.
   std::uint64_t steps = 0;         // Scheduler steps taken.
   std::uint64_t trace_digest = 0;  // Equal digests mean identical runs.
+  std::string trace_path;          // The dumped trace; empty if none was written.
 };
 
 // Top-level harness: owns the seed, virtual clock, RNG, trace and scheduler
@@ -56,6 +63,11 @@ class Simulation {
 
   Result run_until_quiescent();
 
+  // Writes the trace as JSON Lines: a header line (format, versions, seed),
+  // then one line per event with its step, virtual time, kind, and the id and
+  // name of the task or channel it concerns.
+  void write_trace(std::ostream& out) const;
+
  private:
   struct NamedInvariant {
     std::string name;
@@ -64,6 +76,13 @@ class Simulation {
 
   // Names the first invariant that fails, or returns an empty string.
   std::string first_failed_invariant() const;
+
+  // Dumps the trace into options_.trace_dir. Returns the file's path, or an
+  // empty string if it could not be written.
+  std::string dump_trace() const;
+
+  // "from->to" for a channel, the task's name for a task.
+  std::string subject_name(const TraceEvent& event) const;
 
   // Declaration order matters: the scheduler is built from the three above it.
   std::uint64_t seed_;

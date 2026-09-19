@@ -57,7 +57,7 @@ to the earliest wake-up.
 |---|---|---|
 | `VirtualClock` / `VirtualRng` | done, seed-deterministic | - |
 | `Scheduler` | seed-driven interleaving, virtual-time sleep | - |
-| `Trace` | in-memory event log with a replay digest | dump to a file on failure |
+| `Trace` | event log with a replay digest; JSON Lines dump of failed runs (`SimulationOptions::trace_dir`) | - |
 | `Channel` / `FaultSpec` | one-way message channel with loss, latency, optional reordering | - |
 | Multi-seed runner, shrinking | not started | planned |
 | Disk/filesystem faults | not started | planned |

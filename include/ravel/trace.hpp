@@ -18,6 +18,11 @@ enum class TraceEventKind : std::uint8_t {
   MessageDelivered,
 };
 
+const char* to_string(TraceEventKind kind) noexcept;
+
+// True for events whose subject is a task, false for a channel's.
+bool is_task_event(TraceEventKind kind) noexcept;
+
 // One fact about the run. The event's position in the trace is its step
 // number.
 struct TraceEvent {

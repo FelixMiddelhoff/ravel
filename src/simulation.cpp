@@ -1,9 +1,45 @@
 #include "ravel/simulation.hpp"
 
+#include <cstdio>
+#include <fstream>
+#include <ostream>
+#include <system_error>
+
+#include "ravel/version.hpp"
+
 namespace ravel {
 
+namespace {
+
+constexpr int kTraceFormatVersion = 1;
+
+// Escapes `text` as the inside of a JSON string literal.
+std::string json_escape(const std::string& text) {
+  std::string escaped;
+  for (const char c : text) {
+    switch (c) {
+      case '"': escaped += "\\\""; break;
+      case '\\': escaped += "\\\\"; break;
+      case '\n': escaped += "\\n"; break;
+      case '\r': escaped += "\\r"; break;
+      case '\t': escaped += "\\t"; break;
+      default:
+        if (static_cast<unsigned char>(c) < 0x20) {
+          char code[8];
+          std::snprintf(code, sizeof code, "\\u%04x", static_cast<unsigned>(c));
+          escaped += code;
+        } else {
+          escaped += c;
+        }
+    }
+  }
+  return escaped;
+}
+
+}  // namespace
+
 Simulation::Simulation(std::uint64_t seed, SimulationOptions options)
-    : seed_(seed), options_(options), rng_(seed), scheduler_(clock_, rng_, trace_) {}
+    : seed_(seed), options_(std::move(options)), rng_(seed), scheduler_(clock_, rng_, trace_) {}
 
 Channel& Simulation::add_channel(std::string from, std::string to, FaultSpec fault) {
   return channels_.emplace_back(channels_.size(), std::move(from), std::move(to), fault,
@@ -25,6 +61,38 @@ std::string Simulation::first_failed_invariant() const {
   return {};
 }
 
+std::string Simulation::subject_name(const TraceEvent& event) const {
+  if (is_task_event(event.kind)) return scheduler_.task_name(event.subject);
+  const Channel& channel = channels_.at(event.subject);
+  return channel.from() + "->" + channel.to();
+}
+
+void Simulation::write_trace(std::ostream& out) const {
+  out << R"({"format":"ravel-trace","trace_version":)" << kTraceFormatVersion
+      << R"(,"ravel_version":")" << version_string() << R"(","seed":)" << seed_ << "}\n";
+
+  std::size_t step = 0;
+  for (const TraceEvent& event : trace_.events()) {
+    out << R"({"step":)" << step++ << R"(,"time":)" << event.time << R"(,"kind":")"
+        << to_string(event.kind) << R"(","id":)" << event.subject << R"(,"name":")"
+        << json_escape(subject_name(event)) << "\"}\n";
+  }
+}
+
+std::string Simulation::dump_trace() const {
+  std::error_code error;
+  std::filesystem::create_directories(options_.trace_dir, error);
+
+  const auto path =
+      options_.trace_dir / ("ravel-seed-" + std::to_string(seed_) + ".trace.jsonl");
+  std::ofstream file(path);
+  if (error || !file) return {};
+
+  write_trace(file);
+  file.flush();
+  return file ? path.string() : std::string();
+}
+
 Result Simulation::run_until_quiescent() {
   const RunReport report = scheduler_.run_until_quiescent(options_.max_steps);
 
@@ -35,6 +103,13 @@ Result Simulation::run_until_quiescent() {
   result.failure =
       report.status == RunStatus::Completed ? first_failed_invariant() : report.failure;
   result.ok = result.failure.empty();
+
+  if (!result.ok && !options_.trace_dir.empty()) {
+    result.trace_path = dump_trace();
+    if (result.trace_path.empty()) {
+      result.failure += " (trace could not be written to " + options_.trace_dir.string() + ")";
+    }
+  }
   return result;
 }
 
