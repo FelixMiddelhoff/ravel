@@ -4,6 +4,7 @@ add_executable(ravel_tests
   test_rng.cpp
   test_runner.cpp
   test_scheduler.cpp
+  test_shrink.cpp
   test_simulation.cpp
   test_trace.cpp
 )

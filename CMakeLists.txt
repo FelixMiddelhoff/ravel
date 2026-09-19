@@ -24,6 +24,7 @@ set(RAVEL_SOURCES
   src/rng.cpp
   src/runner.cpp
   src/scheduler.cpp
+  src/shrink.cpp
   src/simulation.cpp
   src/trace.cpp
   src/version.cpp
