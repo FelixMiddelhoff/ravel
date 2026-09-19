@@ -105,6 +105,7 @@ RunnerReport run_seeds(const SimulationSetup& setup, const RunnerOptions& option
   if (options.shrink_first_failure && !report.failures.empty()) {
     ShrinkOptions shrink_options;
     shrink_options.max_attempts = options.max_shrink_attempts;
+    shrink_options.threads = options.threads;
     shrink_options.simulation = options.simulation;
     report.shrunk = shrink(setup, report.failures.front().seed, shrink_options);
   }

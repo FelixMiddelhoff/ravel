@@ -41,7 +41,11 @@ When a seed fails, `shrink` boils the run down. Every random decision
 `sim.rng()`) is recorded as a small integer where 0 is the simplest outcome.
 Shrinking edits that list, replays it, and keeps any change that still fails
 the same way with a shorter or smaller list. A 40-message run with a lost
-message shrinks to one that loses exactly one.
+message shrinks to one that loses exactly one. Candidates are replayed on
+all hardware threads, and the result is the same whatever the thread count.
+Besides dropping and lowering single choices, it moves value between two
+draws that must add up to something (say, two delays) and lowers two draws
+together.
 
 ```cpp
 ravel::RunnerOptions options;

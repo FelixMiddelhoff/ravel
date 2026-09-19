@@ -32,6 +32,12 @@ struct ShrinkOptions {
   // a long failing run it can take many replays to get there.
   std::uint64_t max_attempts = 20'000;
 
+  // Threads that replay candidates at the same time; 0 means one per hardware
+  // thread. The result does not depend on this number, only the time it
+  // takes. As with run_seeds, the setup then runs on several threads at once,
+  // so it must not touch shared mutable state.
+  unsigned threads = 0;
+
   // Applied to every replay. If trace_dir is set, the original failing run
   // and the minimal one each write a trace (the latter as `.replay`), and the
   // minimal choice list is saved there as `ravel-seed-<seed>.choices`.
