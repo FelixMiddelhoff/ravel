@@ -14,10 +14,22 @@ code block preceded by a marker comment:
     ...what that program prints...
     ```
 
+    <!-- output@root: kv_sweep --replay docs/snippets/data/x.choices -->
+    ```text
+    ...the same, but run from the repository root, so file paths can be relative to it...
+    ```
+
+    <!-- tool: ravel_trace.py summary docs/snippets/data/x.trace.jsonl -->
+    ```text
+    ...what that script under tools/ prints (run from the repository root)...
+    ```
+
 A snippet names a file, and optionally a region of it between the lines
 `// [name]` and `// [/name]`. An output names a program built under
 docs/snippets in the build directory, plus its arguments; it is run in an empty
-scratch directory and must exit with status 0.
+scratch directory (or, for output@root, in the repository root). A tool names a
+script under tools/. Both must exit with status 0 or 1: 1 is a normal answer
+for a sweep that finds a bug or a diff that differs; anything else is an error.
 
 Usage:
     python3 tools/check_docs.py --build-dir build            # verify (used by CI)
@@ -36,7 +48,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 MARKED_BLOCK = re.compile(
-    r"(<!-- (?P<kind>snippet|output): (?P<arg>.+?) -->\n```(?P<lang>\w*)\n)(?P<body>.*?)(\n```)",
+    r"(<!-- (?P<kind>snippet|output@root|output|tool): (?P<arg>.+?) -->\n```(?P<lang>\w*)\n)(?P<body>.*?)(\n```)",
     re.DOTALL,
 )
 
@@ -72,21 +84,27 @@ def find_program(build_dir: Path, name: str) -> Path:
     sys.exit(f"error: program '{name}' not found under {build_dir}/docs/snippets (build it first)")
 
 
-def output_text(build_dir: Path, arg: str) -> str:
+def output_text(build_dir: Path, kind: str, arg: str) -> str:
     words = shlex.split(arg)
-    program = find_program(build_dir, words[0])
+    ok_statuses = (0, 1)  # 1 is a normal answer: a sweep that found a bug, a diff that differs.
+    if kind == "tool":
+        # A script under tools/.
+        command = [sys.executable, str(ROOT / "tools" / words[0]), *words[1:]]
+        ok_statuses = (0, 1)
+    else:
+        command = [str(find_program(build_dir, words[0])), *words[1:]]
+
     with tempfile.TemporaryDirectory() as scratch:
-        run = subprocess.run(
-            [str(program), *words[1:]], cwd=scratch, capture_output=True, text=True, encoding="utf-8"
-        )
-    if run.returncode != 0:
+        cwd = scratch if kind == "output" else str(ROOT)
+        run = subprocess.run(command, cwd=cwd, capture_output=True, text=True, encoding="utf-8")
+    if run.returncode not in ok_statuses:
         sys.exit(f"error: '{arg}' exited with status {run.returncode}:\n{run.stdout}{run.stderr}")
     lines = run.stdout.replace("\r\n", "\n").split("\n")
     return "\n".join(line.rstrip() for line in lines).rstrip("\n")
 
 
 def expected_body(kind: str, arg: str, build_dir: Path) -> str:
-    return snippet_text(arg) if kind == "snippet" else output_text(build_dir, arg)
+    return snippet_text(arg) if kind == "snippet" else output_text(build_dir, kind, arg)
 
 
 def process(doc: Path, build_dir: Path, update: bool) -> int:

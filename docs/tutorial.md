@@ -284,9 +284,10 @@ There it is. The reply was lost at step 8, so the client retried, and the server
 applied the same request twice. Every line of the trace is in virtual time (`t=`
 is ticks, never wall-clock), so it reads the same however fast your machine is.
 
-If you like the command line, [`jq`](https://jqlang.github.io/jq/) makes
-traces easy to slice; see [debugging.md](debugging.md#reading-a-trace) for
-recipes.
+Prefer a picture? `tools/ravel_trace.py timeline` lays the same trace out with one
+column per task and channel, like a sequence diagram, and `jq` slices it from the
+command line; see [debugging.md](debugging.md#reading-traces-with-ravel_trace) for
+both.
 
 ## 6. What is a "choice"?
 

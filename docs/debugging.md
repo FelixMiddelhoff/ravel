@@ -273,6 +273,115 @@ flight for 4 (`MessageDelivered` at `t=4`); the server wakes up, finishes; the
 finished before the message arrived. If a bug depends on that order, you can
 see it here.
 
+### Reading traces with ravel_trace
+
+A raw trace is easy for a program and tiring for a person. `tools/ravel_trace.py`
+(plain Python 3, no dependencies) turns it into something you can read at a glance.
+The examples use the tutorial's two traces for the failing deposit: the original
+failing run, and the minimal one ravel shrank it to.
+
+**`summary`**: what is in the trace, and anything that deserves a look.
+
+<!-- tool: ravel_trace.py summary docs/snippets/data/deposit_original.trace.jsonl -->
+```text
+docs/snippets/data/deposit_original.trace.jsonl
+seed 6, ravel x.y.z
+26 events over 208 ticks of virtual time
+
+events by kind:
+  kind              count
+  MessageDelivered  3
+  MessageDropped    4
+  MessageSent       7
+  TaskFinished      1
+  TaskResumed       9
+  TaskSpawned       2
+
+events by task, channel or disk:
+  name            count
+  client          8
+  client->server  10
+  server          4
+  server->client  4
+
+worth a look:
+  4 x message(s) lost to the fault spec
+```
+
+Four lost messages, and (from the tutorial) we know that one lost *reply* is the
+whole bug.
+
+**`timeline`**: one column per task, channel and disk, one row per event, in time
+order. This is usually the fastest way to *see* a failure. Words in capitals mark
+what deserves a look (`DROPPED`, `CRASH`, `FAILED`, `THREW`):
+
+<!-- tool: ravel_trace.py timeline docs/snippets/data/deposit_minimal.trace.jsonl -->
+```text
+time  step  server   client    client->server  server->client
+0     0     spawned
+0     1              spawned
+0     2     runs
+0     3              runs
+0     4                        send
+1     5                        deliver
+1     6     runs
+1     7                                        send
+1     8                                        DROPPED
+50    9              runs
+50    10                       send
+51    11                       deliver
+51    12    runs
+51    13                                       send
+52    14                                       deliver
+52    15             runs
+52    16             finished
+```
+
+Read it like a sequence diagram: the request goes out (`send`, then `deliver`), the
+server runs, its reply is `DROPPED`, and fifty ticks later the client runs again and
+sends the request a second time.
+
+**`show`**: the events as a plain table, with filters `--name` (a task, channel or
+disk), `--kind`, `--from` and `--to` (virtual time). For example, only what was
+lost:
+
+<!-- tool: ravel_trace.py show docs/snippets/data/deposit_original.trace.jsonl --kind MessageDropped -->
+```text
+step  time  kind            name
+8     1     MessageDropped  server->client
+11    50    MessageDropped  client->server
+14    100   MessageDropped  client->server
+17    150   MessageDropped  client->server
+```
+
+**`diff`**: where two traces part ways. Point it at the original failing run and the
+minimal one to see what shrinking threw away:
+
+<!-- tool: ravel_trace.py diff docs/snippets/data/deposit_original.trace.jsonl docs/snippets/data/deposit_minimal.trace.jsonl -->
+```text
+the traces agree for 2 events, then part ways at step 2:
+   step  A: deposit_original.trace.jsonl  B: deposit_minimal.trace.jsonl
+   0     t=0 TaskSpawned server           t=0 TaskSpawned server
+   1     t=0 TaskSpawned client           t=0 TaskSpawned client
+>  2     t=0 TaskResumed client           t=0 TaskResumed server
+   3     t=0 MessageSent client->server   t=0 TaskResumed client
+   4     t=0 TaskResumed server           t=0 MessageSent client->server
+
+A has 26 events, B has 17.
+
+what differs, by kind:
+  kind            A  B  change
+  MessageDropped  4  1  -3
+  MessageSent     7  4  -3
+  TaskResumed     9  6  -3
+```
+
+The runs part at step 2 (the original started the client first; the minimal run
+starts the server), and the table at the bottom is the summary of what shrinking
+removed: three of the four lost messages and the retries they caused. `diff`
+exits with status 1 when the traces differ and 0 when they are identical, so it also
+works in scripts, for instance to check that two runs of the same seed match.
+
 ### Slicing traces with jq
 
 Traces are plain JSON Lines, so ordinary tools work. With
