@@ -83,6 +83,11 @@ std::string Simulation::subject_name(const TraceEvent& event) const {
   return {};
 }
 
+std::string Simulation::describe(const TraceEvent& event) const {
+  return std::string(to_string(event.kind)) + " '" + subject_name(event) +
+         "' at t=" + std::to_string(event.time);
+}
+
 void Simulation::write_trace(std::ostream& out) const {
   out << R"({"format":"ravel-trace","trace_version":)" << kTraceFormatVersion
       << R"(,"ravel_version":")" << version_string() << R"(","seed":)" << seed_ << "}\n";

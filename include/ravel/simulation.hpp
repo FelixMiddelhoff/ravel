@@ -107,6 +107,9 @@ class Simulation {
   // name of the task or channel it concerns.
   void write_trace(std::ostream& out) const;
 
+  // One event in words, for messages: `TaskResumed 'client' at t=40`.
+  std::string describe(const TraceEvent& event) const;
+
  private:
   struct NamedInvariant {
     std::string name;

@@ -1,4 +1,5 @@
 add_executable(ravel_tests
+  test_determinism.cpp
   test_disk.cpp
   test_disk_names.cpp
   test_main.cpp

@@ -34,6 +34,8 @@ struct TraceEvent {
   VirtualClock::Tick time;
   std::size_t subject;  // A task, channel or disk id; see subject_of().
   TraceEventKind kind;
+
+  bool operator==(const TraceEvent&) const = default;
 };
 
 // Ordered record of everything that happened during a run (scheduling
