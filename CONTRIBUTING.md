@@ -103,8 +103,8 @@ still holds, not just that the change compiles.
    date, and update the compare links at the bottom.
 2. Bump the version in `CMakeLists.txt` (`project(... VERSION x.y.z)`),
    `include/ravel/version.hpp`, `src/version.cpp`, `packaging/conan/conanfile.py`
-   and `packaging/vcpkg/ports/ravel/vcpkg.json`. A test checks that the last two
-   library sources agree.
+   and `packaging/vcpkg/ports/ravel/vcpkg.json`. (A test checks that
+   `version.hpp` and `version.cpp` agree.)
 3. Run the whole test suite and `ravel_soak` with a large seed count
    (`ravel_soak 100000`).
 4. Tag `vX.Y.Z` and push the tag, then create the release.
