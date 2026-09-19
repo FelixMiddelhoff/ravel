@@ -24,7 +24,10 @@ artifact. Realistic concerns:
   inputs (seeds, fault specs, channel names a caller controls).
 - The C ABI (`include/ravel/ravel.h`) never letting a C++ exception cross
   into a C caller (undefined behavior on ABI boundaries) — every function
-  there must catch internally and return a status code instead.
+  there must catch internally and return a status code instead. All four
+  exported functions were audited for this (including `create`, whose
+  constructor can throw even under `std::nothrow`, and `destroy`); a test
+  covers null handles.
 - `VirtualRng` (`include/ravel/rng.hpp`) is **not cryptographically secure**
   and must never be used as a source of randomness for anything
   security-sensitive (tokens, keys, nonces) in code that happens to also use
@@ -38,6 +41,14 @@ artifact. Realistic concerns:
   socket, a real disk, or a process ravel didn't spawn. There is no "target
   a remote host" mode; the library has no code path that opens a real
   network connection.
+- **The only real files ravel touches are the ones you point it at.** When
+  `SimulationOptions::trace_dir` is set it creates that directory and writes
+  `ravel-seed-<number>.*` files (traces, choice lists) into it; file names
+  contain only a number, never caller-supplied text. `read_choices` parses a
+  stream the caller opens. It sizes nothing from the file's own counts, so a
+  hostile or corrupt file can only make it throw, and replaying any list is
+  safe because every value is clamped to the bound of the draw it answers.
+  Nothing else in the library opens a file.
 - **No dynamic code loading, no eval of external input.** Simulation
   scenarios are C++ code the caller compiles and links, not a scripting
   format ravel parses — so there is no scenario-file injection surface to

@@ -118,6 +118,7 @@ TEST(simulation_c_api_runs_a_simulation) {
   ravel_simulation_destroy(sim);
 
   CHECK(ravel_simulation_run(nullptr) == 0);
+  ravel_simulation_destroy(nullptr);  // Like free(NULL): harmless.
 }
 
 TEST(version_string_matches_version_constants) {
