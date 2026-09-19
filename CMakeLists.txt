@@ -22,6 +22,7 @@ set(RAVEL_SOURCES
   src/c_api.cpp
   src/network.cpp
   src/rng.cpp
+  src/runner.cpp
   src/scheduler.cpp
   src/simulation.cpp
   src/trace.cpp
@@ -40,7 +41,10 @@ function(ravel_configure_library target)
   else()
     target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic)
   endif()
+  target_link_libraries(${target} PUBLIC Threads::Threads)
 endfunction()
+
+find_package(Threads REQUIRED)
 
 add_library(ravel STATIC ${RAVEL_SOURCES})
 add_library(ravel::ravel ALIAS ravel)

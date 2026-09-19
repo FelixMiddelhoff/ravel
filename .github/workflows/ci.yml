@@ -28,7 +28,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        sanitizer: [address, undefined]
+        sanitizer: [address, undefined, thread]
     steps:
       - uses: actions/checkout@v7
       - name: Configure

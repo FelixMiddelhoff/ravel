@@ -17,25 +17,24 @@ Rust has this (`turmoil`, `madsim`, `loom`). C++ doesn't have a portable,
 permissively-licensed equivalent.
 
 ```cpp
-ravel::Simulation sim(seed);
+ravel::RunnerReport report = ravel::run_seeds([](ravel::Simulation& sim) {
+  int& counter = sim.make_state<int>(0);
+  for (int i = 0; i < 3; ++i) {
+    sim.scheduler().spawn("incrementer", [&sim, &counter]() -> ravel::Task {
+      const int seen = counter;
+      co_await sim.scheduler().yield();  // the scheduler may run any task here
+      counter = seen + 1;                // lost update if one did
+    });
+  }
+  sim.add_invariant("no_lost_updates", [&counter] { return counter == 3; });
+});
 
-int counter = 0;
-for (int i = 0; i < 3; ++i) {
-  sim.scheduler().spawn("incrementer", [&]() -> ravel::Task {
-    const int seen = counter;
-    co_await sim.scheduler().yield();  // the scheduler may run any task here
-    counter = seen + 1;                // lost update if one did
-  });
-}
-sim.add_invariant("no_lost_updates", [&] { return counter == 3; });
-
-ravel::Result r = sim.run_until_quiescent();
-if (!r.ok) std::printf("seed %llu: %s
-", r.seed, r.failure.c_str());
+for (const ravel::Result& r : report.failures)
+  std::printf("seed %llu: %s\n", r.seed, r.failure.c_str());
 ```
 
-Run it over many seeds and some interleavings expose the bug; the failing
-seed replays identically. See [`examples/quickstart.cpp`](examples/quickstart.cpp).
+`run_seeds` runs many seeds in parallel; some interleavings expose the bug,
+and a failing seed replays identically. See [`examples/quickstart.cpp`](examples/quickstart.cpp).
 
 Messages travel over virtual channels whose faults come from the same seed:
 
@@ -59,7 +58,8 @@ to the earliest wake-up.
 | `Scheduler` | seed-driven interleaving, virtual-time sleep | - |
 | `Trace` | event log with a replay digest; JSON Lines dump of failed runs (`SimulationOptions::trace_dir`) | - |
 | `Channel` / `FaultSpec` | one-way message channel with loss, latency, optional reordering | - |
-| Multi-seed runner, shrinking | not started | planned |
+| Multi-seed runner (`run_seeds`) | parallel over seeds, thread-count-independent report | - |
+| Shrinking | not started | planned |
 | Disk/filesystem faults | not started | planned |
 
 ## Building

@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <functional>
 #include <iosfwd>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -57,6 +58,19 @@ class Simulation {
 
   Channel& add_channel(std::string from, std::string to, FaultSpec fault);
 
+  // Creates an object owned by the simulation and returns a reference to it.
+  // Use it for state shared by tasks and invariants: it outlives every task,
+  // and each run (say, each seed of run_seeds) gets its own fresh copy.
+  //
+  //   int& counter = sim.make_state<int>(0);
+  template <typename T, typename... Args>
+  T& make_state(Args&&... args) {
+    auto state = std::make_shared<T>(std::forward<Args>(args)...);
+    T& reference = *state;
+    owned_state_.push_back(std::move(state));
+    return reference;
+  }
+
   // Invariants are checked once, after the scheduler has run to quiescence.
   // An invariant that throws counts as failed.
   void add_invariant(std::string name, InvariantFn invariant);
@@ -83,6 +97,10 @@ class Simulation {
 
   // "from->to" for a channel, the task's name for a task.
   std::string subject_name(const TraceEvent& event) const;
+
+  // Declared first so it is destroyed last: suspended tasks may still refer
+  // to this state while they are torn down.
+  std::vector<std::shared_ptr<void>> owned_state_;
 
   // Declaration order matters: the scheduler is built from the three above it.
   std::uint64_t seed_;

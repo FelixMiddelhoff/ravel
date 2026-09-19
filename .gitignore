@@ -11,3 +11,4 @@
 *.dll
 compile_commands.json
 __pycache__/
+/ravel-traces/
