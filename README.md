@@ -200,6 +200,8 @@ simulation. Never use it for keys, nonces or tokens.
 - [CHANGELOG.md](CHANGELOG.md): what changed in each release.
 - [docs/formats.md](docs/formats.md): the trace file, the choices file, and how
   the trace digest is computed.
+- [docs/disk-model.md](docs/disk-model.md): the exact rules of the virtual disk, how they
+  compare with real filesystems, and how they are tested.
 - [docs/abi-policy.md](docs/abi-policy.md): what may change in the C ABI.
 
 ## C ABI
