@@ -48,19 +48,31 @@ class TraceError(Exception):
     pass
 
 
+EVENT_FIELDS = {"step": int, "time": int, "kind": str, "id": int, "name": str}
+
+
+def parse_json(line):
+    """The parsed line, or None if it is not JSON (a literal null is also None)."""
+    try:
+        return json.loads(line)
+    except (ValueError, RecursionError):  # Bad syntax, an absurdly long number, or nesting.
+        return None
+
+
 def load(path):
     """Returns (header, events) for a trace file, or raises TraceError."""
     try:
         lines = Path(path).read_text(encoding="utf-8").splitlines()
     except OSError as error:
         raise TraceError(f"{path}: {error.strerror or error}")
+    except UnicodeDecodeError:
+        raise TraceError(f"{path}: not UTF-8 text; is this a ravel trace?")
     if not lines:
         raise TraceError(f"{path}: the file is empty")
 
-    try:
-        header = json.loads(lines[0])
-    except json.JSONDecodeError:
-        raise TraceError(f"{path}: the first line is not JSON; is this a ravel trace?")
+    header = parse_json(lines[0])
+    if not isinstance(header, dict):
+        raise TraceError(f"{path}: the first line is not a JSON object; is this a ravel trace?")
     if header.get("format") != "ravel-trace":
         raise TraceError(f"{path}: not a ravel trace (no \"format\":\"ravel-trace\" header)")
     if header.get("trace_version") != SUPPORTED_TRACE_VERSION:
@@ -71,10 +83,14 @@ def load(path):
 
     events = []
     for number, line in enumerate(lines[1:], start=2):
-        try:
-            events.append(json.loads(line))
-        except json.JSONDecodeError:
-            raise TraceError(f"{path}:{number}: not valid JSON")
+        event = parse_json(line)
+        if not isinstance(event, dict):
+            raise TraceError(f"{path}:{number}: an event must be a JSON object")
+        for field, kind in EVENT_FIELDS.items():
+            value = event.get(field)
+            if not isinstance(value, kind) or isinstance(value, bool):
+                raise TraceError(f"{path}:{number}: field \"{field}\" is missing or not a {kind.__name__}")
+        events.append(event)
     return header, events
 
 

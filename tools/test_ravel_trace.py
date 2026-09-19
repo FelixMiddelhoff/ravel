@@ -89,6 +89,34 @@ class TraceToolTest(unittest.TestCase):
 
         self.assertEqual(run("show", "no/such/file")[0], 2)
 
+    def test_reports_damaged_traces_instead_of_crashing(self):
+        header = '{"format":"ravel-trace","trace_version":1}\n'
+        good = '{"step":0,"time":0,"kind":"TaskSpawned","id":0,"name":"t"}\n'
+        cases = {
+            "not UTF-8": (b"\xff\xfe", "not UTF-8"),
+            "header is a list": (b"[1]\n", "not a JSON object"),
+            "event is a list": ((header + "[1]\n").encode(), "must be a JSON object"),
+            "event is null": ((header + "null\n").encode(), "must be a JSON object"),
+            "event is not JSON": ((header + "{oops\n").encode(), "must be a JSON object"),
+            "missing field": ((header + '{"step":0}\n').encode(), 'field "time"'),
+            "wrong type": ((header + good.replace('"t"', "5")).encode(), 'field "name"'),
+            "bool as int": ((header + good.replace('"step":0', '"step":true')).encode(), 'field "step"'),
+            "deep nesting": ((header + "[" * 100000).encode(), "must be a JSON object"),
+        }
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "damaged.jsonl"
+            for name, (content, message) in cases.items():
+                path.write_bytes(content)
+                for command in ("summary", "show", "timeline"):
+                    status, _, err = run(command, str(path))
+                    self.assertEqual(status, 2, f"{name}: {command}")
+                    self.assertIn(message, err, f"{name}: {command}")
+
+    def test_random_damage_never_crashes_the_tool(self):
+        import fuzz_trace
+
+        self.assertEqual(fuzz_trace.fuzz(iterations=150, seed=1), [])
+
 
 if __name__ == "__main__":
     unittest.main()

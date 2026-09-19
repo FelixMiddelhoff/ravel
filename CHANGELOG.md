@@ -13,6 +13,13 @@ is listed under "Changed" or "Removed" in the release that makes it.
 - CMake option `RAVEL_COVERAGE` and a CI job that builds with coverage, runs the
   tests and uploads an HTML report.
 
+### Fixed
+
+- `tools/ravel_trace.py` crashed with a Python traceback on some damaged trace files
+  (invalid UTF-8, a header or event that is not a JSON object, an event with a
+  missing or wrongly typed field, absurdly deep nesting). It now reports each with
+  exit status 2. Found by `tools/fuzz_trace.py`, which is also a unit test.
+
 ## [0.3.0] - 2026-09-19
 
 ### Added
