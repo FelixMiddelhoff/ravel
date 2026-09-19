@@ -97,6 +97,45 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 
+## FAQ
+
+**Do I have to change my code?** Yes, a little, and that is the trade. Code
+under test takes its time, randomness, network and disk from ravel
+(`sim.clock()`, `sim.rng()`, `Channel`, `Disk`) instead of calling
+`std::chrono`, `rand()`, sockets or files directly, and runs its concurrency
+as ravel tasks. ravel does not intercept syscalls or processes the way `rr`,
+Antithesis or `LD_PRELOAD` tools do. What you give up is "works on a binary
+you cannot modify". What you get is no ptrace, no root, no platform-specific
+magic, identical behavior on Linux, macOS and Windows, and a run you can step
+through in a normal debugger.
+
+**Is a seed stable across ravel versions?** Not before 1.0. A change to how
+randomness is consumed changes what every seed does. That is why a shrunk
+failure is saved as a *choices file* (`*.choices`): a plain list of numbers
+that replays the same failure and can be checked in as a regression test.
+From 1.0, a seed will keep its meaning within a minor version line.
+
+**Can my code use threads?** No. A simulation is single-threaded and
+cooperative: tasks are coroutines, and ravel decides the order they run in.
+Code that starts real threads, or reads a real clock or a real random source,
+makes runs unrepeatable, and `shrink` will refuse it (it checks that replaying
+a failure really reproduces it). `run_seeds` is parallel, but only across
+independent simulations that share nothing.
+
+**Is `VirtualRng` secure?** No. It is a fast, portable, reproducible PRNG for
+simulation. Never use it for keys, nonces or tokens.
+
+**Which compilers?** C++20 with coroutines: GCC 10+, Clang 14+, MSVC 2019+.
+
+## Non-goals
+
+- No syscall, binary or process interception.
+- No real network or disk access: `Channel` and `Disk` are virtual, and the
+  only files ravel writes are the traces and choice lists you ask for.
+- No multithreaded code under test.
+- No cryptographic randomness.
+- No promise to find bugs outside the faults you model.
+
 ## C ABI
 
 `include/ravel/ravel.h` exposes a minimal opaque-handle C surface for FFI
