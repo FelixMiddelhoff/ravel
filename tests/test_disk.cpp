@@ -310,3 +310,53 @@ TEST(disk_finds_the_missing_fsync_before_acknowledging) {
   options.shrink_first_failure = false;
   CHECK(ravel::run_seeds(write_ahead_log_setup(true), options).ok());
 }
+
+TEST(disk_injected_remove_errors_leave_the_file_in_place) {
+  bool saw_error = false;
+  for (std::uint64_t seed = 0; seed < 40; ++seed) {
+    ravel::Simulation sim(seed);
+    ravel::Disk& disk = sim.add_disk("d", {.write_error_probability = 0.5});
+    ravel::DiskStatus removed = ravel::DiskStatus::Ok;
+    run_with_disk(sim, disk, [&]() -> ravel::Task {
+      // Writes fail too, so retry until the file exists.
+      for (int attempt = 0; attempt < 64; ++attempt) {
+        if (co_await disk.write("f", 0, "data") == ravel::DiskStatus::Ok) break;
+      }
+      removed = co_await disk.remove("f");
+    });
+    if (removed == ravel::DiskStatus::IoError) {
+      saw_error = true;
+      CHECK(disk.file_size("f") == 4);  // A failed remove changes nothing.
+    } else {
+      CHECK(removed == ravel::DiskStatus::Ok);
+      CHECK(disk.file_size("f") == 0);
+    }
+  }
+  CHECK(saw_error);
+}
+
+TEST(disk_failed_sync_keeps_writes_that_were_not_covered) {
+  // Same timing as the test above: w2 lands while the sync is in flight, so it
+  // is not covered by it and survives the failure.
+  ravel::Simulation sim(1);
+  ravel::Disk& disk = sim.add_disk(
+      "d", {.latency_min = 10, .latency_max = 10, .sync_error_probability = 1.0});
+  ravel::DiskStatus status = ravel::DiskStatus::Ok;
+  std::string read_back;
+  sim.scheduler().spawn("w1", [&]() -> ravel::Task { co_await disk.write("f", 0, "1"); });
+  sim.scheduler().spawn("w2", [&]() -> ravel::Task {
+    co_await sim.scheduler().sleep(8);
+    co_await disk.write("f", 1, "2");
+  });
+  sim.scheduler().spawn("syncer", [&]() -> ravel::Task {
+    co_await sim.scheduler().sleep(11);
+    status = co_await disk.sync("f");
+    read_back = (co_await disk.read("f", 0, 100)).data;
+  });
+  sim.run_until_quiescent();
+
+  CHECK(status == ravel::DiskStatus::IoError);
+  CHECK(disk.durable_contents("f").empty());
+  CHECK(disk.file_size("f") == 2);  // w1 dropped, w2 kept: it starts at offset 1.
+  CHECK((read_back == std::string("\0" "2", 2)));
+}

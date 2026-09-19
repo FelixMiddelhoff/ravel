@@ -1,5 +1,6 @@
 #include <chrono>
 #include <cstdint>
+#include <memory>
 #include <stdexcept>
 #include <string>
 
@@ -120,5 +121,66 @@ TEST(check_determinism_lists_problems_in_seed_order_and_honours_the_range) {
   CHECK(report.problems.size() == 4);
   for (std::size_t i = 0; i < report.problems.size(); ++i) {
     CHECK(report.problems[i].seed == 100 + i);
+  }
+}
+
+TEST(check_determinism_reports_a_run_that_ends_early) {
+  // One run does everything the other does and then a late task's work too.
+  // Either run can be the longer one.
+  for (const int longer_run : {1, 2}) {
+    const auto run_number = std::make_shared<int>(0);
+    const auto leaky = [longer_run, run_number](ravel::Simulation& sim) {
+      const int run = ++*run_number;
+      sim.scheduler().spawn("t", [&sim]() -> ravel::Task { co_await sim.scheduler().yield(); });
+      if (run == longer_run) {
+        sim.scheduler().call_after(50, [&sim] {
+          sim.scheduler().spawn("late", [&sim]() -> ravel::Task { co_await sim.scheduler().yield(); });
+        });
+      }
+    };
+    const ravel::DeterminismReport report = ravel::check_determinism(leaky, single_threaded(1));
+    CHECK(report.problems.size() == 1);
+    if (!report.problems.empty()) {
+      CHECK(report.problems[0].description.find("one run ended early") != std::string::npos);
+    }
+  }
+}
+
+TEST(check_determinism_reports_the_same_moves_with_different_random_choices) {
+  const auto leaky = [](ravel::Simulation& sim) {
+    static int calls = 0;
+    if (++calls % 2 == 0) sim.rng().next_below(7);  // Recorded, but invisible in the trace.
+    sim.scheduler().spawn("t", [&sim]() -> ravel::Task { co_await sim.scheduler().yield(); });
+  };
+  const ravel::DeterminismReport report = ravel::check_determinism(leaky, single_threaded(1));
+  CHECK(report.problems.size() == 1);
+  if (!report.problems.empty()) {
+    CHECK(report.problems[0].description.find("different random choices") != std::string::npos);
+  }
+}
+
+TEST(check_determinism_reports_a_replay_that_goes_its_own_way) {
+  // Runs 1 and 2 agree; only the third, the replay, behaves differently.
+  const auto leaky = [](ravel::Simulation& sim) {
+    static int calls = 0;
+    const int nap = (++calls == 3) ? 50 : 5;
+    sim.scheduler().spawn("t", [&sim, nap]() -> ravel::Task {
+      co_await sim.scheduler().sleep(static_cast<ravel::VirtualClock::Tick>(nap));
+    });
+  };
+  const ravel::DeterminismReport report = ravel::check_determinism(leaky, single_threaded(1));
+  CHECK(report.problems.size() == 1);
+  if (!report.problems.empty()) {
+    CHECK(report.problems[0].description.find("replaying run 1's recorded choices") !=
+          std::string::npos);
+  }
+}
+
+TEST(check_determinism_reports_an_unknown_exception) {
+  const auto throws = [](ravel::Simulation&) { throw 42; };
+  const ravel::DeterminismReport report = ravel::check_determinism(throws, single_threaded(1));
+  CHECK(report.problems.size() == 1);
+  if (!report.problems.empty()) {
+    CHECK(report.problems[0].description == "the simulation threw an unknown exception");
   }
 }
