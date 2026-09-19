@@ -61,6 +61,19 @@ jobs:
             --print-summary --txt coverage/summary.txt \
             --html-details coverage/index.html --json-summary coverage/summary.json
           cat coverage/summary.txt
+      - name: Check the coverage floor
+        # Raise the floor when coverage improves; never lower it to make CI pass.
+        env:
+          RAVEL_LINE_COVERAGE_FLOOR: "97.0"
+        run: |
+          python - <<'PY'
+          import json, os, sys
+          summary = json.load(open("coverage/summary.json"))
+          floor = float(os.environ["RAVEL_LINE_COVERAGE_FLOOR"])
+          actual = summary["line_percent"]
+          print(f"line coverage {actual}% (floor {floor}%)")
+          sys.exit(0 if actual >= floor else 1)
+          PY
       - uses: actions/upload-artifact@v4
         with:
           name: coverage-report
