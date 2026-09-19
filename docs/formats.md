@@ -49,9 +49,9 @@ UTF-8, `\n` line endings.
 | `MessageSent` | channel | `send()` was called. |
 | `MessageDropped` | channel | The message was lost to the fault spec. |
 | `MessageDelivered` | channel | The message reached the receiver's inbox. |
-| `DiskWritten` | disk | A write completed and is visible to reads. |
-| `DiskSynced` | disk | A sync completed; covered writes are durable. |
-| `DiskFailed` | disk | A write or sync failed (no space, or an injected error). |
+| `DiskWritten` | disk | A write, rename or removal completed and is visible to reads. |
+| `DiskSynced` | disk | A `sync` or `sync_dir` completed; what it covers is durable. |
+| `DiskFailed` | disk | A write, rename, removal or sync failed (no space, or an injected error). |
 | `DiskCrashed` | disk | `crash()` was called. |
 
 New event kinds may be added in a minor version without changing
