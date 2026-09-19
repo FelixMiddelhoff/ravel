@@ -2,17 +2,13 @@
 
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <vector>
 
+#include "ravel/shrink.hpp"
 #include "ravel/simulation.hpp"
 
 namespace ravel {
-
-// Builds one run: spawn tasks, add channels and invariants. Called once per
-// seed on a fresh Simulation, possibly from several threads at once, so it
-// must not touch shared mutable state. Keep per-run state in
-// Simulation::make_state instead of in captured variables.
-using SimulationSetup = std::function<void(Simulation&)>;
 
 struct RunnerOptions {
   std::uint64_t first_seed = 0;
@@ -25,6 +21,10 @@ struct RunnerOptions {
   // Report only the lowest failing seed and skip seeds beyond it.
   bool stop_at_first_failure = false;
 
+  // Shrink the lowest failing seed once the sweep is done (see shrink()).
+  bool shrink_first_failure = false;
+  std::uint64_t max_shrink_attempts = ShrinkOptions{}.max_attempts;
+
   SimulationOptions simulation;  // Applied to every run.
 };
 
@@ -35,6 +35,10 @@ struct RunnerReport {
 
   std::vector<Result> failures;  // In ascending seed order.
 
+  // The lowest failing seed, minimized. Set only if shrink_first_failure was
+  // requested and something failed.
+  std::optional<ShrinkResult> shrunk;
+
   bool ok() const noexcept { return failures.empty(); }
 };
 
@@ -42,7 +46,8 @@ struct RunnerReport {
 // each in its own Simulation. The report is a function of the setup and the
 // seed range alone: the same on every machine and for every thread count.
 //
-// A setup that throws fails its seed rather than the whole run.
+// A setup that throws fails its seed rather than the whole run. Setup runs
+// on several threads at once; see SimulationSetup.
 RunnerReport run_seeds(const SimulationSetup& setup, const RunnerOptions& options = {});
 
 }  // namespace ravel

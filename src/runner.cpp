@@ -100,7 +100,15 @@ RunnerReport run_seeds(const SimulationSetup& setup, const RunnerOptions& option
     for (unsigned i = 0; i < workers; ++i) threads.emplace_back([&queue] { queue.work(); });
     for (std::thread& thread : threads) thread.join();
   }
-  return queue.finish();
+  RunnerReport report = queue.finish();
+
+  if (options.shrink_first_failure && !report.failures.empty()) {
+    ShrinkOptions shrink_options;
+    shrink_options.max_attempts = options.max_shrink_attempts;
+    shrink_options.simulation = options.simulation;
+    report.shrunk = shrink(setup, report.failures.front().seed, shrink_options);
+  }
+  return report;
 }
 
 }  // namespace ravel

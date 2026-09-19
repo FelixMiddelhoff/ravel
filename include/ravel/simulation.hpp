@@ -19,8 +19,16 @@
 
 namespace ravel {
 
+class Simulation;
+
 // Returns true while the property holds.
 using InvariantFn = std::function<bool()>;
+
+// Builds one run: spawn tasks, add channels and invariants. Called on a fresh
+// Simulation each time, so a runner may call it from several threads at once:
+// it must not touch shared mutable state. Keep per-run state in
+// Simulation::make_state instead of in captured variables.
+using SimulationSetup = std::function<void(Simulation&)>;
 
 struct SimulationOptions {
   // Upper bound on scheduler steps, so a livelocked system fails the run

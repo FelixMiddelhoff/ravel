@@ -1,8 +1,12 @@
 #include <algorithm>
 #include <cstdint>
+#include <filesystem>
+#include <fstream>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 
+#include "ravel/runner.hpp"
 #include "ravel/shrink.hpp"
 #include "testing.hpp"
 
@@ -85,7 +89,8 @@ TEST(shrunk_choices_replay_the_minimal_failure) {
   const std::uint64_t seed = first_failing_seed(setup_random_size_lost_update_system);
   const ravel::ShrinkResult shrunk = ravel::shrink(setup_random_size_lost_update_system, seed);
 
-  const ravel::Result replayed = ravel::replay(setup_random_size_lost_update_system, shrunk.choices);
+  const ravel::Result replayed =
+      ravel::replay(setup_random_size_lost_update_system, shrunk.choices);
   CHECK(!replayed.ok);
   CHECK(replayed.failure == shrunk.original.failure);
   CHECK(replayed.trace_digest == shrunk.minimal.trace_digest);
@@ -110,8 +115,8 @@ TEST(shrink_leaves_a_passing_seed_alone) {
 TEST(shrink_removes_faults_the_failure_does_not_need) {
   // One drop is enough to break the invariant, so the minimal run should have
   // exactly one.
-
-  const ravel::ShrinkResult shrunk = ravel::shrink(setup_lossy_link_system, first_failing_seed(setup_lossy_link_system));
+  const std::uint64_t seed = first_failing_seed(setup_lossy_link_system);
+  const ravel::ShrinkResult shrunk = ravel::shrink(setup_lossy_link_system, seed);
   CHECK(!shrunk.minimal.ok);
 
   ravel::Simulation sim(0, ravel::SimulationOptions{.replay_choices = shrunk.choices});
@@ -149,4 +154,78 @@ TEST(shrink_refuses_a_setup_that_is_not_deterministic) {
     threw = true;
   }
   CHECK(threw);
+}
+
+TEST(choice_lists_round_trip_through_text) {
+  ravel::Choices choices;
+  for (std::uint64_t i = 0; i < 40; ++i) choices.push_back(i * i);
+  choices.push_back(UINT64_MAX);
+
+  std::stringstream text;
+  ravel::write_choices(text, choices);
+  CHECK(ravel::read_choices(text) == choices);
+
+  std::stringstream empty;
+  ravel::write_choices(empty, {});
+  CHECK(ravel::read_choices(empty).empty());
+}
+
+TEST(choice_list_reader_rejects_bad_input) {
+  const auto rejects = [](const std::string& text) {
+    std::istringstream in(text);
+    try {
+      ravel::read_choices(in);
+    } catch (const std::runtime_error&) {
+      return true;
+    }
+    return false;
+  };
+  CHECK(rejects(""));
+  CHECK(rejects("something else 1 2 3"));
+  CHECK(rejects("ravel-choices 2\n0\n"));      // A version this build does not know.
+  CHECK(rejects("ravel-choices 1\n3\n1 2\n"));  // Fewer values than promised.
+  CHECK(rejects("ravel-choices 1\n2\n1 x\n"));
+}
+
+TEST(shrink_saves_the_minimal_choices_next_to_the_traces) {
+  const std::filesystem::path dir = std::filesystem::temp_directory_path() / "ravel-shrink-test";
+  std::filesystem::remove_all(dir);
+
+  ravel::ShrinkOptions options;
+  options.simulation.trace_dir = dir;
+  const std::uint64_t seed = first_failing_seed(setup_lossy_link_system);
+  const ravel::ShrinkResult shrunk = ravel::shrink(setup_lossy_link_system, seed, options);
+
+  CHECK(std::filesystem::path(shrunk.choices_path).filename() ==
+        "ravel-seed-" + std::to_string(seed) + ".choices");
+  CHECK(!shrunk.original.trace_path.empty());
+  CHECK(!shrunk.minimal.trace_path.empty());
+
+  ravel::Choices loaded;
+  {
+    std::ifstream file(shrunk.choices_path);  // Closed before the directory goes.
+    loaded = ravel::read_choices(file);
+  }
+  CHECK(loaded == shrunk.choices);
+  CHECK(!ravel::replay(setup_lossy_link_system, loaded).ok);  // A saved repro still fails.
+
+  std::filesystem::remove_all(dir);
+}
+
+TEST(runner_can_shrink_the_first_failure) {
+  ravel::RunnerOptions options;
+  options.seed_count = 200;
+  options.shrink_first_failure = true;
+  const ravel::RunnerReport report = ravel::run_seeds(setup_lossy_link_system, options);
+
+  CHECK(!report.ok());
+  CHECK(report.shrunk.has_value());
+  if (report.shrunk) {
+    CHECK(report.shrunk->original.seed == report.failures.front().seed);
+    CHECK(report.shrunk->choices.size() < report.shrunk->original_choices.size());
+  }
+
+  ravel::RunnerOptions no_shrink;
+  no_shrink.seed_count = 200;
+  CHECK(!ravel::run_seeds(setup_lossy_link_system, no_shrink).shrunk.has_value());
 }

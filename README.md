@@ -36,6 +36,24 @@ for (const ravel::Result& r : report.failures)
 `run_seeds` runs many seeds in parallel; some interleavings expose the bug,
 and a failing seed replays identically. See [`examples/quickstart.cpp`](examples/quickstart.cpp).
 
+When a seed fails, `shrink` boils the run down. Every random decision
+(scheduling, message loss, delays, and anything your workload draws from
+`sim.rng()`) is recorded as a small integer where 0 is the simplest outcome.
+Shrinking edits that list, replays it, and keeps any change that still fails
+the same way with a shorter or smaller list. A 40-message run with a lost
+message shrinks to one that loses exactly one.
+
+```cpp
+ravel::RunnerOptions options;
+options.shrink_first_failure = true;
+options.simulation.trace_dir = "ravel-traces";  // saves traces and *.choices
+auto report = ravel::run_seeds(setup, options);
+
+// Later, as a permanent regression test (no seed needed):
+std::ifstream file("ravel-traces/ravel-seed-4.choices");
+ravel::Result r = ravel::replay(setup, ravel::read_choices(file));
+```
+
 Messages travel over virtual channels whose faults come from the same seed:
 
 ```cpp
@@ -59,7 +77,7 @@ to the earliest wake-up.
 | `Trace` | event log with a replay digest; JSON Lines dump of failed runs (`SimulationOptions::trace_dir`) | - |
 | `Channel` / `FaultSpec` | one-way message channel with loss, latency, optional reordering | - |
 | Multi-seed runner (`run_seeds`) | parallel over seeds, thread-count-independent report | - |
-| Shrinking | not started | planned |
+| Shrinking (`shrink`, `replay`) | minimizes a failing run; saves a replayable choices file | - |
 | Disk/filesystem faults | not started | planned |
 
 ## Building

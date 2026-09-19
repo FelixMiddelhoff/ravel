@@ -2,8 +2,12 @@
 
 #include <algorithm>
 #include <exception>
+#include <fstream>
+#include <istream>
+#include <ostream>
 #include <stdexcept>
 #include <string>
+#include <system_error>
 
 namespace ravel {
 
@@ -47,6 +51,23 @@ std::vector<std::size_t> chunk_sizes(std::size_t n) {
   std::vector<std::size_t> sizes;
   for (std::size_t size = n; size >= 1; size /= 2) sizes.push_back(size);
   return sizes;
+}
+
+// Saves the list into `dir`, if one is set. Returns the file's path, or an
+// empty string if nothing was written.
+std::string save_choices(const std::filesystem::path& dir, std::uint64_t seed,
+                         const Choices& choices) {
+  if (dir.empty()) return {};
+
+  std::error_code error;
+  std::filesystem::create_directories(dir, error);
+  const auto path = dir / ("ravel-seed-" + std::to_string(seed) + ".choices");
+  std::ofstream file(path);
+  if (error || !file) return {};
+
+  write_choices(file, choices);
+  file.flush();
+  return file ? path.string() : std::string();
 }
 
 class Shrinker {
@@ -173,6 +194,32 @@ class Shrinker {
 
 }  // namespace
 
+void write_choices(std::ostream& out, const Choices& choices) {
+  constexpr std::size_t kPerLine = 16;
+  out << "ravel-choices 1\n" << choices.size() << "\n";
+  for (std::size_t i = 0; i < choices.size(); ++i) {
+    const bool ends_line = (i + 1) % kPerLine == 0 || i + 1 == choices.size();
+    out << choices[i] << (ends_line ? '\n' : ' ');
+  }
+}
+
+Choices read_choices(std::istream& in) {
+  std::string magic;
+  int version = 0;
+  std::size_t count = 0;
+  if (!(in >> magic >> version >> count) || magic != "ravel-choices" || version != 1) {
+    throw std::runtime_error("not a ravel choice list (expected header 'ravel-choices 1')");
+  }
+
+  Choices choices;
+  for (std::size_t i = 0; i < count; ++i) {
+    VirtualRng::Choice choice = 0;
+    if (!(in >> choice)) throw std::runtime_error("ravel choice list is truncated or malformed");
+    choices.push_back(choice);
+  }
+  return choices;
+}
+
 Result replay(const SimulationSetup& setup, const Choices& choices,
               const SimulationOptions& options) {
   return run_once(setup, /*seed=*/0, options, choices).result;
@@ -210,6 +257,7 @@ ShrinkResult shrink(const SimulationSetup& setup, std::uint64_t seed,
   // Run the winner once more with the caller's options, so the minimal
   // result carries its trace path and step count.
   shrunk.minimal = run_once(setup, seed, options.simulation, shrunk.choices).result;
+  shrunk.choices_path = save_choices(options.simulation.trace_dir, seed, shrunk.choices);
   return shrunk;
 }
 
