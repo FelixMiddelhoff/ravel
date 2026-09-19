@@ -1,0 +1,17 @@
+{
+  "name": "ravel",
+  "version": "0.1.0",
+  "description": "Deterministic simulation testing for C++20: seeded scheduling, virtual time, network and disk faults, shrinking and replay.",
+  "homepage": "https://github.com/FelixMiddelhoff/ravel",
+  "license": "MIT",
+  "dependencies": [
+    {
+      "name": "vcpkg-cmake",
+      "host": true
+    },
+    {
+      "name": "vcpkg-cmake-config",
+      "host": true
+    }
+  ]
+}

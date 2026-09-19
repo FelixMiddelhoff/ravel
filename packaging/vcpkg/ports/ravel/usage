@@ -1,0 +1,6 @@
+ravel provides CMake targets:
+
+    find_package(ravel CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE ravel::ravel)
+
+It needs C++20 (coroutines).

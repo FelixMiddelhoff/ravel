@@ -1,0 +1,41 @@
+name: packaging
+on:
+  push:
+    branches: [ main, master ]
+    paths: [ 'packaging/**', 'CMakeLists.txt', 'cmake/**', 'include/**', 'src/**', '.github/workflows/packaging.yml' ]
+  pull_request:
+    paths: [ 'packaging/**', 'CMakeLists.txt', 'cmake/**', 'include/**', 'src/**', '.github/workflows/packaging.yml' ]
+
+jobs:
+  conan:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - run: pip install conan
+      - run: conan profile detect --force
+      # Builds the package from this checkout and runs test_package against it.
+      - run: conan create packaging/conan -s compiler.cppstd=20 --build=missing
+
+  vcpkg:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            triplet: x64-linux
+          - os: windows-latest
+            triplet: x64-windows-static
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      # The port downloads the tagged release, so this checks the published
+      # tarball and its hash, not the working tree.
+      - name: Install the port
+        shell: bash
+        run: |
+          "$VCPKG_INSTALLATION_ROOT/vcpkg" install "ravel:${{ matrix.triplet }}" \
+            --overlay-ports="$GITHUB_WORKSPACE/packaging/vcpkg/ports"
