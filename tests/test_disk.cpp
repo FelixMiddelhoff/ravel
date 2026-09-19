@@ -360,3 +360,11 @@ TEST(disk_failed_sync_keeps_writes_that_were_not_covered) {
   CHECK(disk.file_size("f") == 2);  // w1 dropped, w2 kept: it starts at offset 1.
   CHECK((read_back == std::string("\0" "2", 2)));
 }
+
+TEST(disk_statuses_have_names) {
+  CHECK(std::string(ravel::to_string(ravel::DiskStatus::Ok)) == "Ok");
+  CHECK(std::string(ravel::to_string(ravel::DiskStatus::NoSpace)) == "NoSpace");
+  CHECK(std::string(ravel::to_string(ravel::DiskStatus::IoError)) == "IoError");
+  CHECK(std::string(ravel::to_string(ravel::DiskStatus::Crashed)) == "Crashed");
+  CHECK(std::string(ravel::to_string(ravel::DiskStatus::NotFound)) == "NotFound");
+}
