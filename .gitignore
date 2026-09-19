@@ -13,3 +13,4 @@ compile_commands.json
 __pycache__/
 /ravel-traces/
 packaging/**/build/
+CMakeUserPresets.json
