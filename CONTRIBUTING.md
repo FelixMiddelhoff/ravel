@@ -17,6 +17,20 @@ clang-format -i include/ravel/*.hpp src/*.cpp tests/*.[ch]pp examples/*.cpp
 `.clang-format` and `.clang-tidy` at the repo root pin the style/lint rules;
 most editors pick them up automatically.
 
+## Documentation
+
+The tutorial, porting guide and debugging guide quote real code and real
+program output from `docs/snippets`. After changing either, refresh the docs
+and review the diff:
+
+```bash
+cmake --build build
+python3 tools/check_docs.py --build-dir build --update
+```
+
+CI runs the same script without `--update` and fails if the docs are out of
+date, so the documentation cannot drift from what the code does.
+
 ## The property that must never regress
 
 `VirtualRng` and `VirtualClock` being seed-deterministic — same seed, same

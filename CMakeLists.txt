@@ -117,4 +117,5 @@ endif()
 
 if(RAVEL_BUILD_EXAMPLES)
   add_subdirectory(examples)
+  add_subdirectory(docs/snippets)  # The code and output the docs quote.
 endif()

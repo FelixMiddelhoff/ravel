@@ -170,6 +170,12 @@ simulation. Never use it for keys, nonces or tokens.
 
 ## Documentation
 
+- **New here? Start with the [tutorial](docs/tutorial.md)**: find, shrink, read
+  and fix a real bug in half an hour.
+- [docs/porting.md](docs/porting.md): making your own code simulatable, with a
+  before/after example and a determinism checklist.
+- [docs/debugging.md](docs/debugging.md): what ravel prints for each kind of
+  failure, and how to read traces.
 - API reference: `doxygen docs/Doxyfile` (or the `ravel_docs` CMake target),
   output in `build-docs/html`.
 - [docs/formats.md](docs/formats.md): the trace file, the choices file, and how

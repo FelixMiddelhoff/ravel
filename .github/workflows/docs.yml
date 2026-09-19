@@ -1,0 +1,21 @@
+name: docs
+on:
+  push:
+    branches: [ main, master ]
+    paths: [ 'docs/**', 'tools/**', 'README.md', 'include/**', 'src/**', '.github/workflows/docs.yml' ]
+  pull_request:
+    paths: [ 'docs/**', 'tools/**', 'README.md', 'include/**', 'src/**', '.github/workflows/docs.yml' ]
+
+jobs:
+  snippets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build the programs the docs quote
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --parallel
+      # Fails if any code or output shown in the docs differs from what the
+      # programs really print. Fix with: python3 tools/check_docs.py --update
+      - name: Check the docs against the real programs
+        run: python3 tools/check_docs.py --build-dir build
