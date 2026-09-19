@@ -10,6 +10,12 @@ on:
       disk_sequences:
         description: Random disk operation sequences compared with the reference model
         default: "1000000"
+      stress:
+        description: Repetition multiplier for the thread-pool stress tests (TSan)
+        default: "20"
+      sanitized_seeds:
+        description: Seeds per system for the ASan+UBSan soak (much slower per seed)
+        default: "2000"
 
 jobs:
   soak:
@@ -30,3 +36,27 @@ jobs:
           exe=$(find build -type f \( -name ravel_soak -o -name ravel_soak.exe \) | head -1)
           threads=$(python3 -c "import os; print(os.cpu_count() or 1)" 2>/dev/null || python -c "import os; print(os.cpu_count() or 1)")
           "$exe" "${{ inputs.seeds }}" "$threads" "${{ inputs.disk_sequences }}"
+
+  # The runner and shrinker threads under ThreadSanitizer, repeated many times.
+  stress-tsan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build
+        run: |
+          cmake -S . -B build-tsan -DCMAKE_BUILD_TYPE=Debug             -DCMAKE_CXX_FLAGS="-fsanitize=thread -fno-omit-frame-pointer"
+          cmake --build build-tsan --target ravel_tests
+      - name: Stress
+        run: RAVEL_STRESS=${{ inputs.stress }} build-tsan/tests/ravel_tests stress
+
+  # One full soak, and the disk model, with the address and undefined-behavior checkers.
+  soak-sanitized:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build
+        run: |
+          cmake -S . -B build-asan -DCMAKE_BUILD_TYPE=Release             -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer"
+          cmake --build build-asan --target ravel_soak
+      - name: Soak
+        run: build-asan/bench/ravel_soak ${{ inputs.sanitized_seeds }} 4 50000
