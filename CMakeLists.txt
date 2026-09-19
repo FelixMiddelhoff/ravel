@@ -95,6 +95,16 @@ if(RAVEL_STANDALONE)
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/ravel)
 endif()
 
+# API reference: `cmake --build build --target ravel_docs` (needs Doxygen).
+find_package(Doxygen QUIET)
+if(RAVEL_STANDALONE AND DOXYGEN_FOUND)
+  add_custom_target(ravel_docs
+    COMMAND ${DOXYGEN_EXECUTABLE} docs/Doxyfile
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMENT "Generating the API reference with Doxygen"
+    VERBATIM)
+endif()
+
 if(RAVEL_BUILD_TESTS)
   enable_testing()
   add_subdirectory(tests)

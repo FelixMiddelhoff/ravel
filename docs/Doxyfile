@@ -1,0 +1,22 @@
+# Doxygen configuration for the ravel API reference.
+#   doxygen docs/Doxyfile      (from the repository root)
+# or build the `ravel_docs` CMake target when Doxygen is installed.
+
+PROJECT_NAME           = "ravel"
+PROJECT_BRIEF          = "Deterministic simulation testing for C++. Seed a bug, replay it exact."
+OUTPUT_DIRECTORY       = build-docs
+INPUT                  = README.md SECURITY.md CONTRIBUTING.md CODE_OF_CONDUCT.md include docs/formats.md docs/abi-policy.md
+FILE_PATTERNS          = *.hpp *.h *.md
+RECURSIVE              = YES
+USE_MDFILE_AS_MAINPAGE = README.md
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = NO
+JAVADOC_AUTOBRIEF      = YES
+QT_AUTOBRIEF           = YES
+MARKDOWN_SUPPORT       = YES
+GENERATE_HTML          = YES
+GENERATE_LATEX         = NO
+SOURCE_BROWSER         = NO
+QUIET                  = YES
+WARN_IF_UNDOCUMENTED   = NO
+WARN_AS_ERROR          = NO

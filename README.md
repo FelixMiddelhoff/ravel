@@ -136,6 +136,14 @@ simulation. Never use it for keys, nonces or tokens.
 - No cryptographic randomness.
 - No promise to find bugs outside the faults you model.
 
+## Documentation
+
+- API reference: `doxygen docs/Doxyfile` (or the `ravel_docs` CMake target),
+  output in `build-docs/html`.
+- [docs/formats.md](docs/formats.md): the trace file, the choices file, and how
+  the trace digest is computed.
+- [docs/abi-policy.md](docs/abi-policy.md): what may change in the C ABI.
+
 ## C ABI
 
 `include/ravel/ravel.h` exposes a minimal opaque-handle C surface for FFI
