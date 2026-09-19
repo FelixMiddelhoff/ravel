@@ -172,10 +172,16 @@ simulation. Never use it for keys, nonces or tokens.
 
 - **New here? Start with the [tutorial](docs/tutorial.md)**: find, shrink, read
   and fix a real bug in half an hour.
+- [docs/concepts.md](docs/concepts.md): a one-page mental model, and a glossary.
 - [docs/porting.md](docs/porting.md): making your own code simulatable, with a
   before/after example and a determinism checklist.
 - [docs/debugging.md](docs/debugging.md): what ravel prints for each kind of
-  failure, and how to read traces.
+  failure, and how to read traces (with a `ravel_trace.py` viewer and differ).
+- [docs/ci.md](docs/ci.md): running ravel in CI: a ready-made command line
+  (`run_sweep`), pull-request and nightly workflows, and regression tests from
+  saved reproducers.
+- [docs/example-kv.md](docs/example-kv.md): a key-value store and a power cut: two
+  storage bugs found, shrunk and read.
 - API reference: `doxygen docs/Doxyfile` (or the `ravel_docs` CMake target),
   output in `build-docs/html`.
 - [docs/formats.md](docs/formats.md): the trace file, the choices file, and how

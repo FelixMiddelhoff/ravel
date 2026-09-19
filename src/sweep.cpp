@@ -271,6 +271,10 @@ int run_sweep_main(int argc, char** argv, const SimulationSetup& setup,
   std::string program = argc > 0 ? argv[0] : "test";
   const std::size_t slash = program.find_last_of("/\\");
   if (slash != std::string::npos) program = program.substr(slash + 1);
+  if (program.size() > 4 && (program.compare(program.size() - 4, 4, ".exe") == 0 ||
+                             program.compare(program.size() - 4, 4, ".EXE") == 0)) {
+    program.resize(program.size() - 4);  // Shown in "replay it:" hints; keep them the same everywhere.
+  }
 
   const std::vector<std::string> args(argv + (argc > 0 ? 1 : 0), argv + argc);
   return run_sweep(std::cout, args, setup, defaults, program);

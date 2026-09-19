@@ -29,6 +29,12 @@ ravel_snippet_test(tutorial_regression)
 ravel_snippet_test(porting_after)
 ravel_snippet_test(porting_determinism)
 ravel_snippet_test(debugging_examples)
+ravel_snippet_test(kv_sweep)
+ravel_snippet_test(concepts_choices)
+
+# Sweeps that find a bug on purpose exit 1, so they are only built; the docs
+# checker runs them and compares their output.
+ravel_snippet(ci_sweep)
 
 # Shown next to porting_after as what code looks like before; only compiled.
 ravel_snippet(porting_before)
