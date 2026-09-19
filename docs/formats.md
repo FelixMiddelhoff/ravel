@@ -90,8 +90,11 @@ draws happen. A draw has a bound, and 0 is always its simplest outcome:
   has been runnable longest;
 - a fault that may or may not happen (message loss): 0 = no, 1 = yes;
 - a delay in `[min, max]`: an offset from `min`;
-- a disk crash's fate for one unsynced write: 0 = lost, 1 = torn (the next
-  value says how many sectors survived), 2 = survives whole.
+- a disk crash: first, how many of the pending directory changes (file
+  creations, renames, removals) survive, in order: 0 = none, up to the number
+  pending; then, for each unsynced write of each surviving file, its fate: 0 =
+  lost, 1 = torn (the next value says how many sectors survived), 2 = survives
+  whole.
 
 A value larger than its draw's bound is clamped to `bound - 1`. Draws past the
 end of the list get 0. So **every list is a valid run**, which is what lets
