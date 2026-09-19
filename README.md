@@ -87,6 +87,26 @@ Tasks are C++20 coroutines. At every `co_await scheduler.yield()` or
 task goes next. Time is virtual: when every task sleeps, the clock jumps
 to the earliest wake-up.
 
+## Showcase: Raft
+
+[`examples/raft.hpp`](examples/raft.hpp) is a working Raft implementation
+(leader election and log replication, each node persisting its state to a
+virtual disk) that runs under ravel with nodes losing power at random, and a
+lossy, reordering network. The correct version survives every seed. Three
+deliberate bugs, of the kind real implementations have shipped with, are each
+found by ravel:
+
+| Bug | What breaks | Seeds that fail (of 600) |
+|---|---|---|
+| state file renamed into place before its data is synced | a rebooted node forgets entries it acknowledged | ~200 |
+| rename never made durable (no `sync_dir`) | the same, but only if power fails right after a state change | ~1 |
+| votes for candidates with stale logs | a new leader lacks committed entries | ~20 |
+
+`ravel_raft` runs all four and shrinks the first bug from about 2000 random
+choices to a few hundred, printing what the checkers saw (a leader without an
+entry a node had already applied). The checkers are election safety, state
+machine safety and leader completeness.
+
 ## Status of the seams
 
 | Seam | Today | Planned |

@@ -465,8 +465,11 @@ ShrinkResult shrink(const SimulationSetup& setup, std::uint64_t seed,
   Choices start = original.choices;
   drop_trailing_zeros(start);
 
-  // Shrinking trusts that a list of choices reproduces the run.
-  const Result check = run_once(setup, seed, {}, start).result;
+  // Shrinking trusts that a list of choices reproduces the run. (Same options
+  // as the run itself, such as its time limit, but no trace file.)
+  SimulationOptions check_options = options.simulation;
+  check_options.trace_dir.clear();
+  const Result check = run_once(setup, seed, check_options, start).result;
   if (check.ok || check.failure != original.result.failure) {
     throw std::runtime_error(
         "ravel::shrink: replaying seed " + std::to_string(seed) +

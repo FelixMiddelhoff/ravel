@@ -18,12 +18,16 @@
 #include <utility>
 #include <vector>
 
-#include "quorum_register.hpp"
+#include "raft.hpp"
 #include "ravel/shrink.hpp"
 
 namespace {
 
-using System = std::pair<const char*, ravel::SimulationSetup>;
+struct System {
+  const char* name;
+  ravel::SimulationSetup setup;
+  ravel::SimulationOptions options = {};  // Same for every run and replay of it.
+};
 
 // Tasks read a counter, yield, and write back read+1; the task count is drawn.
 void lost_update(ravel::Simulation& sim) {
@@ -84,6 +88,17 @@ void faulty_disk(ravel::Simulation& sim) {
   sim.add_invariant("log_fits", [&disk] { return disk.file_size("log") <= 12 * 600; });
 }
 
+// A three-node Raft cluster; the second variant has a bug that makes runs fail
+// often, so failing runs are soaked too. Raft never goes quiet, so it needs a
+// time limit, which SimulationOptions carries; replays get the same options.
+System raft_system(raft::Bug bug) {
+  raft::Config config;
+  config.bug = bug;
+  config.run_for = 1500;  // Shorter than the example: this is a soak, not a demo.
+  return {bug == raft::Bug::None ? "raft" : "raft_skip_file_sync", raft::setup(config),
+          raft::options(config)};
+}
+
 struct Findings {
   std::atomic<std::uint64_t> problems{0};
   std::atomic<std::uint64_t> runs{0};
@@ -101,9 +116,9 @@ struct Run {
   ravel::Choices choices;
 };
 
-Run run(const ravel::SimulationSetup& setup, std::uint64_t seed) {
-  ravel::Simulation sim(seed);
-  setup(sim);
+Run run(const System& system, std::uint64_t seed) {
+  ravel::Simulation sim(seed, system.options);
+  system.setup(sim);
   ravel::Result result = sim.run_until_quiescent();
   return {std::move(result), sim.choices()};
 }
@@ -114,22 +129,22 @@ bool same(const ravel::Result& a, const ravel::Result& b) {
 }
 
 void soak_seed(const System& system, std::uint64_t seed, Findings& findings) {
-  const auto& [name, setup] = system;
+  const char* name = system.name;
   try {
-    const Run first = run(setup, seed);
+    const Run first = run(system, seed);
     ++findings.runs;
     findings.steps += first.result.steps;
 
-    if (!same(first.result, run(setup, seed).result)) {
+    if (!same(first.result, run(system, seed).result)) {
       report_problem(findings, name, seed, "running the seed twice gave different results");
     }
-    if (!same(first.result, ravel::replay(setup, first.choices))) {
+    if (!same(first.result, ravel::replay(system.setup, first.choices, system.options))) {
       report_problem(findings, name, seed, "replaying the recorded choices diverged");
     }
 
     ravel::Choices trimmed = first.choices;
     while (!trimmed.empty() && trimmed.back() == 0) trimmed.pop_back();
-    if (!same(first.result, ravel::replay(setup, trimmed))) {
+    if (!same(first.result, ravel::replay(system.setup, trimmed, system.options))) {
       report_problem(findings, name, seed, "replaying with trailing zeros trimmed diverged");
     }
   } catch (const std::exception& e) {
@@ -150,8 +165,8 @@ int main(int argc, char** argv) {
       {"lost_update", lost_update},
       {"lossy_link", lossy_link},
       {"faulty_disk", faulty_disk},
-      {"quorum_register_buggy", quorum_register::setup(1)},
-      {"quorum_register_fixed", quorum_register::setup(2)},
+      raft_system(raft::Bug::None),
+      raft_system(raft::Bug::SkipFileSync),
   };
 
   Findings findings;
@@ -167,7 +182,7 @@ int main(int argc, char** argv) {
       });
     }
     for (std::thread& worker : workers) worker.join();
-    std::printf("%-24s %llu seeds done\n", system.first,
+    std::printf("%-24s %llu seeds done\n", system.name,
                 static_cast<unsigned long long>(seeds_per_system));
   }
 

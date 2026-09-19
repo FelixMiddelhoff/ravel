@@ -5,5 +5,5 @@ target_link_libraries(ravel_soak PRIVATE ravel::ravel)
 target_include_directories(ravel_soak PRIVATE ${PROJECT_SOURCE_DIR}/examples)
 
 # A short soak run as part of ctest; run ravel_soak by hand with a big seed
-# count (say 250000) before a release.
-add_test(NAME ravel_soak COMMAND ravel_soak 2000)
+# count (say 100000; Raft makes it slow) before a release.
+add_test(NAME ravel_soak COMMAND ravel_soak 300)
