@@ -26,23 +26,32 @@ const char* to_string(TraceEventKind kind) noexcept {
     case TraceEventKind::MessageSent: return "MessageSent";
     case TraceEventKind::MessageDropped: return "MessageDropped";
     case TraceEventKind::MessageDelivered: return "MessageDelivered";
+    case TraceEventKind::DiskWritten: return "DiskWritten";
+    case TraceEventKind::DiskSynced: return "DiskSynced";
+    case TraceEventKind::DiskFailed: return "DiskFailed";
+    case TraceEventKind::DiskCrashed: return "DiskCrashed";
   }
   return "Unknown";
 }
 
-bool is_task_event(TraceEventKind kind) noexcept {
+TraceSubject subject_of(TraceEventKind kind) noexcept {
   switch (kind) {
     case TraceEventKind::TaskSpawned:
     case TraceEventKind::TaskResumed:
     case TraceEventKind::TaskFinished:
     case TraceEventKind::TaskThrew:
-      return true;
+      return TraceSubject::Task;
     case TraceEventKind::MessageSent:
     case TraceEventKind::MessageDropped:
     case TraceEventKind::MessageDelivered:
-      return false;
+      return TraceSubject::Channel;
+    case TraceEventKind::DiskWritten:
+    case TraceEventKind::DiskSynced:
+    case TraceEventKind::DiskFailed:
+    case TraceEventKind::DiskCrashed:
+      return TraceSubject::Disk;
   }
-  return false;
+  return TraceSubject::Task;
 }
 
 void Trace::record(const TraceEvent& event) {

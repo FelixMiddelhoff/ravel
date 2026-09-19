@@ -50,6 +50,10 @@ Channel& Simulation::add_channel(std::string from, std::string to, FaultSpec fau
                                 scheduler_, rng_, trace_);
 }
 
+Disk& Simulation::add_disk(std::string name, DiskFaultSpec fault) {
+  return disks_.emplace_back(disks_.size(), std::move(name), fault, scheduler_, rng_, trace_);
+}
+
 void Simulation::add_invariant(std::string name, InvariantFn invariant) {
   invariants_.push_back({std::move(name), std::move(invariant)});
 }
@@ -66,9 +70,17 @@ std::string Simulation::first_failed_invariant() const {
 }
 
 std::string Simulation::subject_name(const TraceEvent& event) const {
-  if (is_task_event(event.kind)) return scheduler_.task_name(event.subject);
-  const Channel& channel = channels_.at(event.subject);
-  return channel.from() + "->" + channel.to();
+  switch (subject_of(event.kind)) {
+    case TraceSubject::Task:
+      return scheduler_.task_name(event.subject);
+    case TraceSubject::Channel: {
+      const Channel& channel = channels_.at(event.subject);
+      return channel.from() + "->" + channel.to();
+    }
+    case TraceSubject::Disk:
+      return disks_.at(event.subject).name();
+  }
+  return {};
 }
 
 void Simulation::write_trace(std::ostream& out) const {

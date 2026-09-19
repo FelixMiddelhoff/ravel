@@ -41,6 +41,9 @@ class VirtualRng {
   // A bound of 1 has only one outcome, so it neither draws nor records.
   std::uint64_t next_below(std::uint64_t bound);
 
+  // Uniform in [low, high], both included. `low` must not exceed `high`.
+  std::uint64_t next_between(std::uint64_t low, std::uint64_t high);
+
   // True with the given probability. Recorded as 1 (true) or 0 (false), so
   // shrinking toward 0 removes the event. Probabilities of 0 or less, and 1
   // or more, are certain and neither draw nor record.

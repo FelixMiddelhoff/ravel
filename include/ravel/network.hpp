@@ -70,7 +70,6 @@ class Channel {
   [[nodiscard]] ReceiveAwaiter receive() noexcept { return ReceiveAwaiter(*this); }
 
  private:
-  VirtualClock::Tick draw_delay();
   void deliver(Message message);
   void wait_for_message();
   Message take_message();

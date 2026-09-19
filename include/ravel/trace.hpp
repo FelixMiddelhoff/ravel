@@ -16,18 +16,23 @@ enum class TraceEventKind : std::uint8_t {
   MessageSent,
   MessageDropped,
   MessageDelivered,
+  DiskWritten,
+  DiskSynced,
+  DiskFailed,   // A write or sync that returned an error.
+  DiskCrashed,
 };
 
 const char* to_string(TraceEventKind kind) noexcept;
 
-// True for events whose subject is a task, false for a channel's.
-bool is_task_event(TraceEventKind kind) noexcept;
+// What an event's `subject` id refers to.
+enum class TraceSubject : std::uint8_t { Task, Channel, Disk };
+TraceSubject subject_of(TraceEventKind kind) noexcept;
 
 // One fact about the run. The event's position in the trace is its step
 // number.
 struct TraceEvent {
   VirtualClock::Tick time;
-  std::size_t subject;  // Task id for Task* events, channel id for Message* events.
+  std::size_t subject;  // A task, channel or disk id; see subject_of().
   TraceEventKind kind;
 };
 

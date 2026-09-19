@@ -56,6 +56,15 @@ ravel::Result r = ravel::replay(setup, ravel::read_choices(file));
 
 Messages travel over virtual channels whose faults come from the same seed:
 
+Disks model what makes storage code hard: a write is visible at once but only
+durable after `sync`, and a crash loses, tears or keeps each unsynced write.
+
+```cpp
+auto& disk = sim.add_disk("ssd", {.latency_min = 1, .latency_max = 10});
+co_await disk.write("wal", 0, "commit #1");
+co_await disk.sync("wal");       // without this, disk.crash() may lose the commit
+```
+
 ```cpp
 auto& link = sim.add_channel("client", "server", {.loss_probability = 0.05,
                                                    .latency_min = 10, .latency_max = 50});
@@ -78,7 +87,7 @@ to the earliest wake-up.
 | `Channel` / `FaultSpec` | one-way message channel with loss, latency, optional reordering | - |
 | Multi-seed runner (`run_seeds`) | parallel over seeds, thread-count-independent report | - |
 | Shrinking (`shrink`, `replay`) | minimizes a failing run; saves a replayable choices file | - |
-| Disk/filesystem faults | not started | planned |
+| `Disk` / `DiskFaultSpec` | virtual files with write-back cache, `sync`, torn writes and lost writes on `crash()`, ENOSPC, I/O errors, latency | - |
 
 ## Building
 

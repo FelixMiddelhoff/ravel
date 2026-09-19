@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cstdint>
-#include <limits>
 #include <stdexcept>
 
 namespace ravel {
@@ -24,14 +23,6 @@ Channel::Channel(ChannelId id, std::string from, std::string to, FaultSpec fault
   }
 }
 
-VirtualClock::Tick Channel::draw_delay() {
-  const VirtualClock::Tick span = fault_.latency_max - fault_.latency_min;
-  if (span == 0) return fault_.latency_min;
-  // span + 1 outcomes; only the full 64-bit range would overflow that.
-  const bool full_range = span == std::numeric_limits<VirtualClock::Tick>::max();
-  return fault_.latency_min + (full_range ? rng_.next_u64() : rng_.next_below(span + 1));
-}
-
 void Channel::send(Message message) {
   record(TraceEventKind::MessageSent);
 
@@ -43,7 +34,7 @@ void Channel::send(Message message) {
   }
 
   const VirtualClock::Tick now = scheduler_.now();
-  VirtualClock::Tick delivery_at = now + draw_delay();
+  VirtualClock::Tick delivery_at = now + rng_.next_between(fault_.latency_min, fault_.latency_max);
   if (!fault_.allow_reorder) delivery_at = std::max(delivery_at, last_delivery_at_);
   last_delivery_at_ = delivery_at;
 

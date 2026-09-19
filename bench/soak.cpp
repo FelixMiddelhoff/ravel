@@ -59,6 +59,27 @@ void lossy_link(ravel::Simulation& sim) {
   sim.add_invariant("all_delivered", [&received] { return received == 30; });
 }
 
+// A disk with latency and both kinds of I/O error, a worker that writes and
+// syncs, and a power cut at a random time.
+void faulty_disk(ravel::Simulation& sim) {
+  ravel::Disk& disk = sim.add_disk("d", {.latency_min = 1,
+                                         .latency_max = 8,
+                                         .write_error_probability = 0.1,
+                                         .sync_error_probability = 0.1});
+  sim.scheduler().spawn("worker", [&sim, &disk]() -> ravel::Task {
+    for (int i = 0; i < 12; ++i) {
+      co_await disk.write("log", static_cast<std::uint64_t>(i) * 600, std::string(600, 'x'));
+      if (i % 3 == 0) co_await disk.sync("log");
+      co_await disk.read("log", 0, 4096);
+    }
+  });
+  sim.scheduler().spawn("power_cut", [&sim, &disk]() -> ravel::Task {
+    co_await sim.scheduler().sleep(1 + sim.rng().next_below(60));
+    disk.crash();
+  });
+  sim.add_invariant("log_fits", [&disk] { return disk.file_size("log") <= 12 * 600; });
+}
+
 struct Findings {
   std::atomic<std::uint64_t> problems{0};
   std::atomic<std::uint64_t> runs{0};
@@ -124,6 +145,7 @@ int main(int argc, char** argv) {
   const std::vector<System> systems = {
       {"lost_update", lost_update},
       {"lossy_link", lossy_link},
+      {"faulty_disk", faulty_disk},
       {"quorum_register_buggy", quorum_register::setup(1)},
       {"quorum_register_fixed", quorum_register::setup(2)},
   };

@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "ravel/clock.hpp"
+#include "ravel/disk.hpp"
 #include "ravel/network.hpp"
 #include "ravel/rng.hpp"
 #include "ravel/scheduler.hpp"
@@ -74,6 +75,7 @@ class Simulation {
   const std::vector<VirtualRng::Choice>& choices() const noexcept { return rng_.choices(); }
 
   Channel& add_channel(std::string from, std::string to, FaultSpec fault);
+  Disk& add_disk(std::string name, DiskFaultSpec fault = {});
 
   // Creates an object owned by the simulation and returns a reference to it.
   // Use it for state shared by tasks and invariants: it outlives every task,
@@ -127,7 +129,9 @@ class Simulation {
   Trace trace_;
   Scheduler scheduler_;
 
-  std::deque<Channel> channels_;  // A deque so add_channel's reference stays valid.
+  // Deques, so the references handed out by add_channel/add_disk stay valid.
+  std::deque<Channel> channels_;
+  std::deque<Disk> disks_;
   std::vector<NamedInvariant> invariants_;
 };
 

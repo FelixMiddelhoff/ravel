@@ -85,6 +85,12 @@ std::uint64_t VirtualRng::next_below(std::uint64_t bound) {
   return record(replaying_ ? next_replayed(bound) : next_raw_below(bound));
 }
 
+std::uint64_t VirtualRng::next_between(std::uint64_t low, std::uint64_t high) {
+  const std::uint64_t span = high - low;
+  // span + 1 outcomes; only the full 64-bit range would overflow that.
+  return low + (span == UINT64_MAX ? next_u64() : next_below(span + 1));
+}
+
 bool VirtualRng::chance(double probability) {
   if (!(probability > 0.0)) return false;  // Also covers NaN.
   if (probability >= 1.0) return true;
