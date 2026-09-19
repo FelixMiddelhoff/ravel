@@ -238,3 +238,18 @@ TEST(shrink_reports_a_setup_that_throws) {
   const ravel::ShrinkResult unnamed = ravel::shrink([](ravel::Simulation&) { throw 42; }, 3);
   CHECK(unnamed.original.failure == "simulation threw an unknown exception");
 }
+
+TEST(read_choices_rejects_every_kind_of_bad_header) {
+  for (const char* text : {"", "ravel-choices", "other-magic 1 0", "ravel-choices 2 0", "ravel-choices 1"}) {
+    std::istringstream in(text);
+    bool rejected = false;
+    try {
+      ravel::read_choices(in);
+    } catch (const std::runtime_error&) {
+      rejected = true;
+    }
+    CHECK(rejected);
+  }
+  std::istringstream ok("ravel-choices 1 2 5 7");
+  CHECK((ravel::read_choices(ok) == ravel::Choices{5, 7}));
+}

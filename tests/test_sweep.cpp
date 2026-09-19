@@ -61,6 +61,18 @@ class Scratch {
 
 }  // namespace
 
+namespace {
+
+void set_environment(const char* name, const char* value) {
+#ifdef _WIN32
+  _putenv_s(name, value);  // An empty value removes it.
+#else
+  if (*value == '\0') unsetenv(name); else setenv(name, value, 1);
+#endif
+}
+
+}  // namespace
+
 TEST(sweep_reports_success_and_exits_zero) {
   const Outcome outcome = sweep(healthy, {"--seeds", "50", "--first-seed", "10"});
   CHECK(outcome.status == 0);
@@ -189,17 +201,9 @@ TEST(sweep_accepts_a_shrink_budget) {
 }
 
 TEST(sweep_reads_seeds_from_the_environment) {
-#ifdef _WIN32
-  _putenv_s("RAVEL_SEEDS", "7");
-#else
-  setenv("RAVEL_SEEDS", "7", 1);
-#endif
+  set_environment("RAVEL_SEEDS", "7");
   const Outcome outcome = sweep(healthy, {});
-#ifdef _WIN32
-  _putenv_s("RAVEL_SEEDS", "");
-#else
-  unsetenv("RAVEL_SEEDS");
-#endif
+  set_environment("RAVEL_SEEDS", "");
   CHECK(outcome.status == 0);
   CHECK(contains(outcome.text, "7 seeds"));
 }
@@ -217,4 +221,81 @@ TEST(sweep_main_names_the_program_without_its_directory_or_exe_suffix) {
   CHECK(contains(captured.str(), "my_prog"));
   CHECK(!contains(captured.str(), "my_prog.exe"));
   CHECK(!contains(captured.str(), "tools"));
+}
+
+
+TEST(sweep_singular_and_help_short_flag) {
+  const Outcome one = sweep(healthy, {"--check-determinism", "--seeds", "1", "--threads", "1"});
+  CHECK(one.text == "deterministic: 1 seed checked\n");
+  CHECK(sweep(healthy, {"-h"}).status == 0);
+}
+
+TEST(sweep_rejects_an_empty_number) {
+  const Outcome outcome = sweep(healthy, {"--seeds", ""});
+  CHECK(outcome.status == 2);
+  CHECK(contains(outcome.text, "needs a non-negative whole number"));
+}
+
+TEST(sweep_ignores_an_empty_environment_variable) {
+  set_environment("RAVEL_SEEDS", "");
+  CHECK(sweep(healthy, {}).status == 0);
+}
+
+TEST(sweep_says_when_the_shrink_budget_ran_out) {
+  // Many random choices to shrink: ten messages over a lossy link.
+  const auto lossy = [](ravel::Simulation& sim) {
+    int& received = sim.make_state<int>(0);
+    auto& link = sim.add_channel("a", "b", {.loss_probability = 0.5});
+    sim.scheduler().spawn("sender", [&link]() -> ravel::Task {
+      for (int i = 0; i < 10; ++i) link.send("m");
+      co_return;
+    });
+    sim.scheduler().spawn("receiver", [&link, &received]() -> ravel::Task {
+      while (true) {
+        co_await link.receive();
+        ++received;
+      }
+    });
+    sim.add_invariant("all_delivered", [&received] { return received == 10; });
+  };
+  const Outcome outcome = sweep(lossy, {"--seeds", "20", "--max-shrink-attempts", "1"});
+  CHECK(outcome.status == 1);
+  CHECK(contains(outcome.text, "(budget ran out)"));
+}
+
+TEST(sweep_shows_only_the_first_five_determinism_problems) {
+  const auto leaky = [](ravel::Simulation& sim) {
+    static int runs = 0;
+    const ravel::VirtualClock::Tick nap = (++runs % 2) ? 5 : 9;
+    sim.scheduler().spawn("t", [&sim, nap]() -> ravel::Task { co_await sim.scheduler().sleep(nap); });
+  };
+  const Outcome outcome = sweep(leaky, {"--check-determinism", "--seeds", "8", "--threads", "1"});
+  CHECK(outcome.status == 1);
+  CHECK(contains(outcome.text, "... and 3 more"));
+}
+
+TEST(sweep_annotates_failures_on_github_actions) {
+  set_environment("GITHUB_ACTIONS", "true");
+  const Outcome failed = sweep(racy, {"--seeds", "100"});
+  const auto leaky = [](ravel::Simulation& sim) {
+    static int runs = 0;
+    const ravel::VirtualClock::Tick nap = (++runs % 2) ? 5 : 9;
+    sim.scheduler().spawn("t", [&sim, nap]() -> ravel::Task { co_await sim.scheduler().sleep(nap); });
+  };
+  const Outcome nondeterministic =
+      sweep(leaky, {"--check-determinism", "--seeds", "2", "--threads", "1"});
+  set_environment("GITHUB_ACTIONS", "");
+
+  CHECK(contains(failed.text, "::error title=ravel found a failure::"));
+  CHECK(contains(nondeterministic.text, "::error title=ravel found a failure::"));
+  CHECK(!contains(sweep(racy, {"--seeds", "100"}).text, "::error"));
+}
+
+TEST(sweep_main_copes_with_an_empty_argument_list) {
+  std::ostringstream captured;
+  std::streambuf* const previous = std::cout.rdbuf(captured.rdbuf());
+  const int status = ravel::run_sweep_main(0, nullptr, healthy);
+  std::cout.rdbuf(previous);
+  CHECK(status == 0);
+  CHECK(contains(captured.str(), "passed"));
 }
