@@ -69,6 +69,7 @@ jobs:
         # Raise the floor when coverage improves; never lower it to make CI pass.
         env:
           RAVEL_LINE_COVERAGE_FLOOR: "97.0"
+          RAVEL_BRANCH_COVERAGE_FLOOR: "92.0"  # Without exception-only branches.
         run: |
           python - <<'PY'
           import json, os, sys
@@ -76,7 +77,10 @@ jobs:
           floor = float(os.environ["RAVEL_LINE_COVERAGE_FLOOR"])
           actual = summary["line_percent"]
           print(f"line coverage {actual}% (floor {floor}%)")
-          sys.exit(0 if actual >= floor else 1)
+          branch = json.load(open("coverage/branch-summary.json"))["branch_percent"]
+          branch_floor = float(os.environ["RAVEL_BRANCH_COVERAGE_FLOOR"])
+          print(f"branch coverage {branch}% (floor {branch_floor}%)")
+          sys.exit(0 if actual >= floor and branch >= branch_floor else 1)
           PY
       - uses: actions/upload-artifact@v4
         with:
