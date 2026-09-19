@@ -27,21 +27,27 @@ void Scheduler::spawn(std::string name, TaskFactory factory) {
   record(id, TraceEventKind::TaskSpawned);
 }
 
-void Scheduler::sleep_current_task(VirtualClock::Tick duration) {
+void Scheduler::call_after(VirtualClock::Tick delay, std::function<void()> action) {
   constexpr auto kMaxTick = std::numeric_limits<VirtualClock::Tick>::max();
   const VirtualClock::Tick now = clock_.now();
-  const VirtualClock::Tick wake_at = duration > kMaxTick - now ? kMaxTick : now + duration;
-  timers_.push({wake_at, next_timer_sequence_++, current_task_});
+  const VirtualClock::Tick due = delay > kMaxTick - now ? kMaxTick : now + delay;
+  timers_.push({due, next_timer_sequence_++, std::move(action)});
 }
 
-// Makes every timer due at the earliest wake time runnable at once, so the
-// random pick that follows also explores the order of simultaneous wake-ups.
-void Scheduler::wake_earliest_timers() {
-  const VirtualClock::Tick wake_at = timers_.top().wake_at;
-  clock_.advance_to(wake_at);
-  while (!timers_.empty() && timers_.top().wake_at == wake_at) {
-    runnable_.push_back(timers_.top().task);
+void Scheduler::sleep_current_task(VirtualClock::Tick duration) {
+  call_after(duration, [this, task = current_task_] { make_runnable(task); });
+}
+
+// Advances the clock to the earliest timer and runs every timer due then. A
+// sleeper's timer just makes it runnable, so all simultaneous wake-ups become
+// runnable together and the random pick that follows explores their order.
+void Scheduler::fire_earliest_timers() {
+  const VirtualClock::Tick due = timers_.top().due;
+  clock_.advance_to(due);
+  while (!timers_.empty() && timers_.top().due == due) {
+    const Timer timer = timers_.top();  // priority_queue only allows copying out.
     timers_.pop();
+    timer.action();
   }
 }
 
@@ -72,7 +78,10 @@ RunReport Scheduler::run_until_quiescent(std::uint64_t max_steps) {
   RunReport report;
 
   while (has_pending_work()) {
-    if (runnable_.empty()) wake_earliest_timers();
+    if (runnable_.empty()) {
+      fire_earliest_timers();  // May run actions that wake nobody; look again.
+      continue;
+    }
 
     if (report.steps == max_steps) {
       report.status = RunStatus::StepLimitReached;

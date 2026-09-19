@@ -20,7 +20,7 @@ std::uint64_t mix(std::uint64_t digest, std::uint64_t value) noexcept {
 void Trace::record(const TraceEvent& event) {
   events_.push_back(event);
   digest_ = mix(digest_, event.time);
-  digest_ = mix(digest_, event.task);
+  digest_ = mix(digest_, event.subject);
   digest_ = mix(digest_, static_cast<std::uint64_t>(event.kind));
 }
 

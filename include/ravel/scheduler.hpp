@@ -28,8 +28,10 @@ using TaskId = std::size_t;
 // factory here is what guarantees that.)
 using TaskFactory = std::function<Task()>;
 
+// "Completed" means nothing is left to happen. A task still waiting for a
+// message that will never come (a server loop, say) does not prevent that.
 enum class RunStatus {
-  Completed,         // Every task finished.
+  Completed,         // No runnable task and no pending timer.
   TaskThrew,         // A task let an exception escape; the run stopped there.
   StepLimitReached,  // Still runnable work after `max_steps` (likely a livelock).
 };
@@ -104,6 +106,21 @@ class Scheduler {
 
   const std::string& task_name(TaskId id) const { return slots_.at(id).name; }
 
+  // Building blocks for blocking primitives such as Channel; tasks rarely
+  // need them directly.
+
+  VirtualClock::Tick now() const noexcept { return clock_.now(); }
+
+  // The task being resumed right now. Valid only inside a task.
+  TaskId current_task() const noexcept { return current_task_; }
+
+  // Lets a suspended task run again on a later step.
+  void make_runnable(TaskId id) { runnable_.push_back(id); }
+
+  // Runs `action` once the clock reaches now() + delay. Actions due at the
+  // same time run in the order they were scheduled.
+  void call_after(VirtualClock::Tick delay, std::function<void()> action);
+
  private:
   struct TaskSlot {
     TaskSlot(std::string task_name, TaskFactory task_factory)
@@ -115,22 +132,22 @@ class Scheduler {
   };
 
   struct Timer {
-    VirtualClock::Tick wake_at;
-    std::uint64_t sequence;  // Creation order; makes equal wake times ordered.
-    TaskId task;
+    VirtualClock::Tick due;
+    std::uint64_t sequence;  // Creation order; makes equal due times ordered.
+    std::function<void()> action;
   };
 
-  struct WakesLater {
+  struct DueLater {
     bool operator()(const Timer& a, const Timer& b) const noexcept {
-      return a.wake_at != b.wake_at ? a.wake_at > b.wake_at : a.sequence > b.sequence;
+      return a.due != b.due ? a.due > b.due : a.sequence > b.sequence;
     }
   };
 
-  void requeue_current_task() { runnable_.push_back(current_task_); }
+  void requeue_current_task() { make_runnable(current_task_); }
   void sleep_current_task(VirtualClock::Tick duration);
 
   bool has_pending_work() const noexcept { return !runnable_.empty() || !timers_.empty(); }
-  void wake_earliest_timers();
+  void fire_earliest_timers();
   TaskId take_random_runnable_task();
 
   // Runs one task until its next suspension point. Returns the exception the
@@ -149,7 +166,7 @@ class Scheduler {
   // running coroutine refers to the factory stored in its slot.
   std::deque<TaskSlot> slots_;
   std::vector<TaskId> runnable_;
-  std::priority_queue<Timer, std::vector<Timer>, WakesLater> timers_;
+  std::priority_queue<Timer, std::vector<Timer>, DueLater> timers_;
   std::uint64_t next_timer_sequence_ = 0;
   TaskId current_task_ = 0;  // Valid only while a task is being resumed.
 };

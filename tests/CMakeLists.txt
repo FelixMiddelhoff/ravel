@@ -1,5 +1,6 @@
 add_executable(ravel_tests
   test_main.cpp
+  test_network.cpp
   test_rng.cpp
   test_scheduler.cpp
   test_simulation.cpp

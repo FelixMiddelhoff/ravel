@@ -6,7 +6,8 @@ Simulation::Simulation(std::uint64_t seed, SimulationOptions options)
     : seed_(seed), options_(options), rng_(seed), scheduler_(clock_, rng_, trace_) {}
 
 Channel& Simulation::add_channel(std::string from, std::string to, FaultSpec fault) {
-  return channels_.emplace_back(std::move(from), std::move(to), fault);
+  return channels_.emplace_back(channels_.size(), std::move(from), std::move(to), fault,
+                                scheduler_, rng_, trace_);
 }
 
 void Simulation::add_invariant(std::string name, InvariantFn invariant) {

@@ -20,6 +20,7 @@ option(RAVEL_BUILD_EXAMPLES "Build the example programs"   ${RAVEL_STANDALONE})
 
 set(RAVEL_SOURCES
   src/c_api.cpp
+  src/network.cpp
   src/rng.cpp
   src/scheduler.cpp
   src/simulation.cpp

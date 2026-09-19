@@ -37,6 +37,15 @@ if (!r.ok) std::printf("seed %llu: %s
 Run it over many seeds and some interleavings expose the bug; the failing
 seed replays identically. See [`examples/quickstart.cpp`](examples/quickstart.cpp).
 
+Messages travel over virtual channels whose faults come from the same seed:
+
+```cpp
+auto& link = sim.add_channel("client", "server", {.loss_probability = 0.05,
+                                                   .latency_min = 10, .latency_max = 50});
+link.send("ping");                             // may be dropped or delayed
+ravel::Message m = co_await link.receive();    // inside a task
+```
+
 Tasks are C++20 coroutines. At every `co_await scheduler.yield()` or
 `co_await scheduler.sleep(ticks)` the seeded scheduler picks which runnable
 task goes next. Time is virtual: when every task sleeps, the clock jumps
@@ -49,7 +58,7 @@ to the earliest wake-up.
 | `VirtualClock` / `VirtualRng` | done, seed-deterministic | - |
 | `Scheduler` | seed-driven interleaving, virtual-time sleep | - |
 | `Trace` | in-memory event log with a replay digest | dump to a file on failure |
-| `Channel` / `FaultSpec` | struct defined, not wired up | loss/latency/reorder actually applied |
+| `Channel` / `FaultSpec` | one-way message channel with loss, latency, optional reordering | - |
 | Multi-seed runner, shrinking | not started | planned |
 | Disk/filesystem faults | not started | planned |
 

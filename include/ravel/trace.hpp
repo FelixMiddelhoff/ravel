@@ -13,18 +13,23 @@ enum class TraceEventKind : std::uint8_t {
   TaskResumed,
   TaskFinished,
   TaskThrew,
+  MessageSent,
+  MessageDropped,
+  MessageDelivered,
 };
 
-// One scheduling fact. The event's position in the trace is its step number.
+// One fact about the run. The event's position in the trace is its step
+// number.
 struct TraceEvent {
   VirtualClock::Tick time;
-  std::size_t task;  // Scheduler-assigned task id.
+  std::size_t subject;  // Task id for Task* events, channel id for Message* events.
   TraceEventKind kind;
 };
 
-// Ordered record of everything the Scheduler decided during a run, plus a
-// running digest of it. Two runs made the same decisions exactly when their
-// digests match, which is how replay is checked.
+// Ordered record of everything that happened during a run (scheduling
+// decisions and message fates), plus a running digest of it. Two runs made
+// the same decisions exactly when their digests match, which is how replay
+// is checked.
 class Trace {
  public:
   void record(const TraceEvent& event);
