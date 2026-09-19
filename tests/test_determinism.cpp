@@ -184,3 +184,23 @@ TEST(check_determinism_reports_an_unknown_exception) {
     CHECK(report.problems[0].description == "the simulation threw an unknown exception");
   }
 }
+
+TEST(check_determinism_names_a_failure_that_appears_only_in_the_second_run) {
+  const auto unstable_invariant = [](ravel::Simulation& sim) {
+    static int calls = 0;
+    sim.add_invariant("flaky", [] { return ++calls % 2 == 1; });  // Passes first, fails second.
+  };
+  const ravel::DeterminismReport report =
+      ravel::check_determinism(unstable_invariant, single_threaded(1));
+  CHECK(report.problems.size() == 1);
+  if (!report.problems.empty()) {
+    CHECK(report.problems[0].description.find("run 1 ended with no failure") != std::string::npos);
+  }
+}
+
+TEST(check_determinism_picks_a_thread_count_by_itself) {
+  ravel::DeterminismOptions options;
+  options.seed_count = 6;
+  options.threads = 0;
+  CHECK(ravel::check_determinism(deterministic_system, options).ok());
+}

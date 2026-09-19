@@ -1,4 +1,5 @@
 #include <cstdint>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -211,4 +212,17 @@ TEST(channel_fails_the_run_when_two_tasks_receive_at_once) {
   const ravel::Result result = sim.run_until_quiescent();
   CHECK(!result.ok);
   CHECK(result.failure.find("already waiting to receive") != std::string::npos);
+}
+
+TEST(channel_rejects_negative_and_nan_loss_probabilities) {
+  for (const double p : {-0.5, std::numeric_limits<double>::quiet_NaN()}) {
+    ravel::Simulation sim(1);
+    bool rejected = false;
+    try {
+      sim.add_channel("a", "b", {.loss_probability = p});
+    } catch (const std::invalid_argument&) {
+      rejected = true;
+    }
+    CHECK(rejected);
+  }
 }

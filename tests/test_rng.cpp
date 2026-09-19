@@ -101,3 +101,17 @@ TEST(rng_certain_draws_consume_and_record_nothing) {
   CHECK(rng.chance(2.0));
   CHECK(rng.choices().empty());
 }
+
+TEST(rng_next_below_handles_bounds_that_reject_many_raw_values) {
+  // Just over 2^63: about half of all raw values fall in the rejected zone.
+  constexpr std::uint64_t kBound = (std::uint64_t{1} << 63) + 1;
+  ravel::VirtualRng rng(3);
+  for (int i = 0; i < 200; ++i) CHECK(rng.next_below(kBound) < kBound);
+}
+
+TEST(rng_next_between_covers_the_whole_64_bit_range) {
+  ravel::VirtualRng rng(3);
+  rng.next_between(0, UINT64_MAX);  // span + 1 would overflow; must not crash or loop.
+  CHECK(rng.next_between(5, 5) == 5);
+  CHECK(rng.choices().size() >= 1);
+}

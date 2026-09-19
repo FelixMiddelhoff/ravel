@@ -1,6 +1,8 @@
 // Directory behavior of the virtual disk: rename, remove, list, sync_dir, and
 // what a crash does to names that were never made durable.
 #include <cstdint>
+#include <limits>
+#include <stdexcept>
 #include <set>
 #include <string>
 #include <vector>
@@ -277,5 +279,94 @@ TEST(disk_finds_the_missing_directory_sync_after_rename) {
     const ravel::Result replayed =
         ravel::replay(atomic_replace_setup(ReplaceBug::SkipDirSync), report.shrunk->choices);
     CHECK(!replayed.ok);
+  }
+}
+
+TEST(disk_sync_dir_of_the_target_directory_makes_a_cross_directory_rename_durable) {
+  ravel::Simulation sim(0);
+  ravel::Disk& disk = sim.add_disk("d");
+  run_task(sim, [&]() -> ravel::Task {
+    co_await disk.write("a/f", 0, "x");
+    co_await disk.sync("a/f");
+    co_await disk.rename("a/f", "b/f");
+    co_await disk.sync_dir("b");  // The rename touched b too.
+  });
+  CHECK(disk.durable_exists("b/f"));
+  CHECK(!disk.durable_exists("a/f"));
+}
+
+TEST(disk_sync_dir_does_not_cover_changes_made_after_it_started) {
+  // Latency 10 everywhere. The file is durable at t=20. sync_dir is issued at
+  // t=21 and completes at t=31; a rename issued at t=15 lands at t=25, after
+  // sync_dir began, so sync_dir must not make it durable.
+  ravel::Simulation sim(0);
+  ravel::Disk& disk = sim.add_disk("d", {.latency_min = 10, .latency_max = 10});
+  sim.scheduler().spawn("setup", [&]() -> ravel::Task {
+    co_await disk.write("a", 0, "x");
+    co_await disk.sync("a");
+  });
+  sim.scheduler().spawn("renamer", [&]() -> ravel::Task {
+    co_await sim.scheduler().sleep(15);
+    co_await disk.rename("a", "b");
+  });
+  sim.scheduler().spawn("dir_syncer", [&]() -> ravel::Task {
+    co_await sim.scheduler().sleep(21);
+    co_await disk.sync_dir("");
+  });
+  sim.run_until_quiescent();
+  CHECK(disk.durable_exists("a"));
+  CHECK(!disk.durable_exists("b"));
+}
+
+TEST(disk_renaming_a_file_onto_itself_changes_nothing) {
+  ravel::Simulation sim(0);
+  ravel::Disk& disk = sim.add_disk("d");
+  ravel::DiskStatus status = ravel::DiskStatus::IoError;
+  run_task(sim, [&]() -> ravel::Task {
+    co_await disk.write("a", 0, "x");
+    status = co_await disk.rename("a", "a");
+  });
+  CHECK(status == ravel::DiskStatus::Ok);
+  CHECK(disk.file_size("a") == 1);
+}
+
+TEST(disk_refuses_a_write_whose_end_overflows) {
+  ravel::Simulation sim(0);
+  ravel::Disk& disk = sim.add_disk("d");
+  ravel::DiskStatus status = ravel::DiskStatus::Ok;
+  run_task(sim, [&]() -> ravel::Task {
+    status = co_await disk.write("f", UINT64_MAX - 1, "abc");
+  });
+  CHECK(status == ravel::DiskStatus::NoSpace);
+  CHECK(disk.file_size("f") == 0);
+}
+
+TEST(disk_crash_copes_with_an_empty_write) {
+  for (std::uint64_t seed = 0; seed < 10; ++seed) {
+    ravel::Simulation sim(seed);
+    ravel::Disk& disk = sim.add_disk("d");
+    run_task(sim, [&]() -> ravel::Task {
+      co_await disk.write("f", 0, "");
+      disk.crash();
+    });
+    CHECK(disk.durable_contents("f").empty());
+  }
+}
+
+TEST(disk_rejects_every_out_of_range_probability) {
+  const double bad[] = {-0.1, 1.5, std::numeric_limits<double>::quiet_NaN()};
+  for (const double p : bad) {
+    for (int which = 0; which < 2; ++which) {
+      ravel::Simulation sim(1);
+      ravel::DiskFaultSpec spec;
+      (which == 0 ? spec.write_error_probability : spec.sync_error_probability) = p;
+      bool rejected = false;
+      try {
+        sim.add_disk("d", spec);
+      } catch (const std::invalid_argument&) {
+        rejected = true;
+      }
+      CHECK(rejected);
+    }
   }
 }

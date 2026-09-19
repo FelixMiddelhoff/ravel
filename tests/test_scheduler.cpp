@@ -1,4 +1,5 @@
 #include <cstdint>
+#include <limits>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -196,4 +197,29 @@ TEST(scheduler_can_be_set_up_on_one_thread_and_run_on_another) {
   std::thread runner([&] { h.scheduler.run_until_quiescent(kNoLimit); });
   runner.join();
   CHECK(ran == 1);
+}
+
+TEST(scheduler_saturates_a_sleep_that_would_overflow_the_clock) {
+  Harness h(1);
+  bool woke = false;
+  h.scheduler.spawn("sleeper", [&]() -> ravel::Task {
+    co_await h.scheduler.sleep(5);
+    co_await h.scheduler.sleep(std::numeric_limits<ravel::VirtualClock::Tick>::max());
+    woke = true;
+  });
+  const ravel::RunReport report = h.scheduler.run_until_quiescent(kNoLimit);
+  CHECK(report.status != ravel::RunStatus::StepLimitReached);
+  CHECK(woke);
+  CHECK(h.clock.now() == std::numeric_limits<ravel::VirtualClock::Tick>::max());
+}
+
+TEST(task_that_owns_nothing_is_done_and_has_no_exception) {
+  ravel::Task empty;
+  CHECK(empty.done());
+  CHECK(empty.exception() == nullptr);
+
+  ravel::Task self;
+  ravel::Task& alias = self;
+  self = std::move(alias);  // Self-move must be harmless.
+  CHECK(self.done());
 }
