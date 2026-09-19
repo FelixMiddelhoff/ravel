@@ -19,6 +19,10 @@ is listed under "Changed" or "Removed" in the release that makes it.
   (invalid UTF-8, a header or event that is not a JSON object, an event with a
   missing or wrongly typed field, absurdly deep nesting). It now reports each with
   exit status 2. Found by `tools/fuzz_trace.py`, which is also a unit test.
+- `shrink` (and so `run_seeds` with `shrink_first_failure`, and `--replay`) could not
+  minimize a run that threw after making random choices: the choices were lost and
+  shrinking failed with "the setup is not deterministic". The choices made before the
+  throw are now kept. Found by the new thread-pool stress tests.
 
 ## [0.3.0] - 2026-09-19
 

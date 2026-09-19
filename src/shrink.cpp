@@ -7,6 +7,7 @@
 #include <fstream>
 #include <functional>
 #include <istream>
+#include <memory>
 #include <mutex>
 #include <ostream>
 #include <stdexcept>
@@ -27,15 +28,22 @@ struct Run {
 Run run_once(const SimulationSetup& setup, std::uint64_t seed, SimulationOptions options,
              std::optional<Choices> replay_choices) {
   options.replay_choices = std::move(replay_choices);
+  // Kept outside the try so that a setup or task that throws still reports the
+  // choices made up to that point: replaying them throws again, which is what
+  // lets a throwing run be shrunk.
+  std::unique_ptr<Simulation> sim;
+  const auto choices_so_far = [&sim] { return sim ? sim->choices() : Choices{}; };
   try {
-    Simulation sim(seed, std::move(options));
-    setup(sim);
-    Result result = sim.run_until_quiescent();
-    return {std::move(result), sim.choices()};
+    sim = std::make_unique<Simulation>(seed, std::move(options));
+    setup(*sim);
+    Result result = sim->run_until_quiescent();
+    return {std::move(result), sim->choices()};
   } catch (const std::exception& e) {
-    return {Result{.seed = seed, .failure = std::string("simulation threw: ") + e.what()}, {}};
+    return {Result{.seed = seed, .failure = std::string("simulation threw: ") + e.what()},
+            choices_so_far()};
   } catch (...) {
-    return {Result{.seed = seed, .failure = "simulation threw an unknown exception"}, {}};
+    return {Result{.seed = seed, .failure = "simulation threw an unknown exception"},
+            choices_so_far()};
   }
 }
 

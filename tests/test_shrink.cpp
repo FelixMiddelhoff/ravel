@@ -253,3 +253,25 @@ TEST(read_choices_rejects_every_kind_of_bad_header) {
   std::istringstream ok("ravel-choices 1 2 5 7");
   CHECK((ravel::read_choices(ok) == ravel::Choices{5, 7}));
 }
+
+TEST(shrink_minimizes_a_run_that_throws_after_drawing_choices) {
+  // Throws when its first draw is 7, whatever else it draws. Shrinking must
+  // keep the choices made before the throw, or the throw cannot be replayed.
+  const auto throws_on_seven = [](ravel::Simulation& sim) {
+    const std::uint64_t first = sim.rng().next_between(0, 9);
+    sim.rng().next_between(0, 9);
+    if (first == 7) throw std::runtime_error("seven");
+  };
+  std::uint64_t seed = 0;
+  while (true) {
+    ravel::Simulation probe(seed);
+    if (probe.rng().next_between(0, 9) == 7) break;
+    ++seed;
+  }
+
+  const ravel::ShrinkResult shrunk = ravel::shrink(throws_on_seven, seed);
+  CHECK(shrunk.original.failure == "simulation threw: seven");
+  CHECK(shrunk.original_choices.size() == 2);
+  CHECK(shrunk.minimal.failure == "simulation threw: seven");
+  CHECK((shrunk.choices == ravel::Choices{7}));  // The second draw is not needed.
+}
