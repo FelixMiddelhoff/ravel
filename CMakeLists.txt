@@ -17,6 +17,8 @@ option(RAVEL_SHARED         "Also build a shared library"  OFF)
 option(RAVEL_BUILD_TESTS    "Build the test suite"         ${RAVEL_STANDALONE})
 option(RAVEL_BUILD_BENCH    "Build the perf bench"         ${RAVEL_STANDALONE})
 option(RAVEL_BUILD_EXAMPLES "Build the example programs"   ${RAVEL_STANDALONE})
+option(RAVEL_BUILD_FUZZ     "Build the fuzz targets and replay their corpora as tests" ${RAVEL_STANDALONE})
+option(RAVEL_FUZZ           "Link the fuzz targets with libFuzzer and sanitizers (Clang)" OFF)
 option(RAVEL_COVERAGE       "Instrument for line/branch coverage (GCC or Clang)" OFF)
 
 set(RAVEL_SOURCES
@@ -47,6 +49,12 @@ function(ravel_configure_library target)
     target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic)
   endif()
   target_link_libraries(${target} PUBLIC Threads::Threads)
+  if(RAVEL_FUZZ)
+    # Instrument the library so libFuzzer can see which of its branches an
+    # input reaches. (The fuzz targets themselves link the fuzzer runtime.)
+    target_compile_options(${target} PUBLIC -fsanitize=fuzzer-no-link,address,undefined -fno-omit-frame-pointer)
+    target_link_options(${target} PUBLIC -fsanitize=address,undefined)
+  endif()
   if(RAVEL_COVERAGE)
     # Public, so the test programs that link the library are instrumented and
     # write their counters at exit.
@@ -117,6 +125,10 @@ endif()
 if(RAVEL_BUILD_TESTS)
   enable_testing()
   add_subdirectory(tests)
+endif()
+
+if(RAVEL_BUILD_FUZZ)
+  add_subdirectory(fuzz)
 endif()
 
 if(RAVEL_BUILD_BENCH)

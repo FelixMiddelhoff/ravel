@@ -1,0 +1,5 @@
+--check-determinism
+--seeds
+3
+--threads
+1
