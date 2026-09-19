@@ -1,0 +1,32 @@
+name: soak
+# Long runs of ravel's own checks (replay, determinism, the disk reference
+# model). Too slow for every push: start it by hand before a release.
+on:
+  workflow_dispatch:
+    inputs:
+      seeds:
+        description: Seeds per system
+        default: "20000"
+      disk_sequences:
+        description: Random disk operation sequences compared with the reference model
+        default: "1000000"
+
+jobs:
+  soak:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release --target ravel_soak
+      - name: Soak
+        shell: bash
+        run: |
+          exe=$(find build -type f \( -name ravel_soak -o -name ravel_soak.exe \) | head -1)
+          threads=$(python3 -c "import os; print(os.cpu_count() or 1)" 2>/dev/null || python -c "import os; print(os.cpu_count() or 1)")
+          "$exe" "${{ inputs.seeds }}" "$threads" "${{ inputs.disk_sequences }}"
