@@ -7,7 +7,9 @@
 //     past the end of the list);
 //   * nothing throws or crashes.
 //
-// It also reports throughput. Usage: ravel_soak [seeds-per-system] [threads]
+// It also runs random Disk operation sequences against the reference model in
+// tests/disk_model.hpp, and reports throughput.
+// Usage: ravel_soak [seeds-per-system] [threads] [disk-sequences]
 #include <atomic>
 #include <chrono>
 #include <cstdint>
@@ -18,6 +20,7 @@
 #include <utility>
 #include <vector>
 
+#include "disk_model.hpp"
 #include "raft.hpp"
 #include "ravel/shrink.hpp"
 
@@ -161,6 +164,10 @@ int main(int argc, char** argv) {
   const unsigned threads = argc > 2 ? static_cast<unsigned>(std::strtoul(argv[2], nullptr, 10))
                                     : std::max(1u, std::thread::hardware_concurrency());
 
+  // Sequences of random disk operations compared against the reference model.
+  const std::uint64_t disk_sequences =
+      argc > 3 ? std::strtoull(argv[3], nullptr, 10) : seeds_per_system;
+
   const std::vector<System> systems = {
       {"lost_update", lost_update},
       {"lossy_link", lossy_link},
@@ -184,6 +191,27 @@ int main(int argc, char** argv) {
     for (std::thread& worker : workers) worker.join();
     std::printf("%-24s %llu seeds done\n", system.name,
                 static_cast<unsigned long long>(seeds_per_system));
+  }
+
+  {
+    std::atomic<std::uint64_t> next_sequence{0};
+    std::vector<std::thread> workers;
+    for (unsigned i = 0; i < threads; ++i) {
+      workers.emplace_back([&] {
+        for (std::uint64_t seed; (seed = next_sequence++) < disk_sequences;) {
+          try {
+            const std::string difference = ravel::testing::differential_disk_test(seed, 40);
+            ++findings.runs;
+            if (!difference.empty()) report_problem(findings, "disk_model", seed, difference.c_str());
+          } catch (const std::exception& e) {
+            report_problem(findings, "disk_model", seed, e.what());
+          }
+        }
+      });
+    }
+    for (std::thread& worker : workers) worker.join();
+    std::printf("%-24s %llu sequences done\n", "disk_model",
+                static_cast<unsigned long long>(disk_sequences));
   }
 
   const double seconds =
