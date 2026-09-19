@@ -90,7 +90,8 @@ def expected_body(kind: str, arg: str, build_dir: Path) -> str:
 
 
 def process(doc: Path, build_dir: Path, update: bool) -> int:
-    original = doc.read_text(encoding="utf-8", newline="")
+    with open(doc, encoding="utf-8", newline="") as file:  # Keep line endings as they are.
+        original = file.read()
     newline = "\r\n" if "\r\n" in original else "\n"
     text = original.replace("\r\n", "\n")
 
@@ -112,7 +113,8 @@ def process(doc: Path, build_dir: Path, update: bool) -> int:
 
     rewritten = MARKED_BLOCK.sub(replace, text)
     if update and mismatches:
-        doc.write_text(rewritten.replace("\n", newline), encoding="utf-8", newline="")
+        with open(doc, "w", encoding="utf-8", newline="") as file:
+            file.write(rewritten.replace("\n", newline))
         print(f"{doc.relative_to(ROOT)}: updated {mismatches} block(s)")
     return mismatches
 
