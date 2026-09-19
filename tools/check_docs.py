@@ -24,6 +24,12 @@ code block preceded by a marker comment:
     ...what that script under tools/ prints (run from the repository root)...
     ```
 
+    <!-- message: a second task is already waiting to receive -->
+
+A message marker names text that ravel prints. It must appear in the source under
+include/ or src/, so a troubleshooting entry cannot describe a message that no
+longer exists.
+
 A snippet names a file, and optionally a region of it between the lines
 `// [name]` and `// [/name]`. An output names a program built under
 docs/snippets in the build directory, plus its arguments; it is run in an empty
@@ -116,13 +122,35 @@ def expected_body(kind: str, arg: str, build_dir: Path) -> str:
     return snippet_text(arg) if kind == "snippet" else output_text(build_dir, kind, arg)
 
 
+MESSAGE = re.compile(r"<!-- message: (?P<text>.+?) -->")
+_SOURCE = None
+
+
+def source_text() -> str:
+    """All of ravel's own source, to look error messages up in."""
+    global _SOURCE
+    if _SOURCE is None:
+        files = [*(ROOT / "include").rglob("*.hpp"), *(ROOT / "src").rglob("*.cpp")]
+        _SOURCE = "\n".join(f.read_text(encoding="utf-8") for f in sorted(files))
+    return _SOURCE
+
+
+def check_messages(doc: Path, text: str) -> int:
+    missing = 0
+    for match in MESSAGE.finditer(text):
+        if match["text"] not in source_text():
+            print(f"\n{doc.relative_to(ROOT)}: message not found in include/ or src/: {match['text']!r}")
+            missing += 1
+    return missing
+
+
 def process(doc: Path, build_dir: Path, update: bool) -> int:
     with open(doc, encoding="utf-8", newline="") as file:  # Keep line endings as they are.
         original = file.read()
     newline = "\r\n" if "\r\n" in original else "\n"
     text = original.replace("\r\n", "\n")
 
-    mismatches = 0
+    mismatches = check_messages(doc, text)
 
     def replace(match: re.Match) -> str:
         nonlocal mismatches

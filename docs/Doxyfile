@@ -5,7 +5,7 @@
 PROJECT_NAME           = "ravel"
 PROJECT_BRIEF          = "Deterministic simulation testing for C++. Seed a bug, replay it exact."
 OUTPUT_DIRECTORY       = build-docs
-INPUT                  = README.md CHANGELOG.md CONTRIBUTING.md SECURITY.md CODE_OF_CONDUCT.md include docs/concepts.md docs/tutorial.md docs/porting.md docs/debugging.md docs/ci.md docs/example-kv.md docs/formats.md docs/abi-policy.md
+INPUT                  = README.md CHANGELOG.md CONTRIBUTING.md SECURITY.md CODE_OF_CONDUCT.md include docs/concepts.md docs/tutorial.md docs/porting.md docs/debugging.md docs/ci.md docs/example-kv.md docs/comparison.md docs/troubleshooting.md docs/formats.md docs/abi-policy.md
 FILE_PATTERNS          = *.hpp *.h *.md
 RECURSIVE              = YES
 USE_MDFILE_AS_MAINPAGE = README.md

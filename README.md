@@ -184,6 +184,12 @@ simulation. Never use it for keys, nonces or tokens.
   before/after example and a determinism checklist.
 - [docs/debugging.md](docs/debugging.md): what ravel prints for each kind of
   failure, and how to read traces (with a `ravel_trace.py` viewer and differ).
+- [docs/comparison.md](docs/comparison.md): how ravel relates to FoundationDB's
+  simulator, turmoil, madsim, Antithesis, rr, Jepsen and property-based testing,
+  and when another tool is the better choice.
+- [docs/troubleshooting.md](docs/troubleshooting.md): every message ravel prints
+  and what to do about it, plus common symptoms (build errors, crashes, "the
+  sweep passes but there is a bug").
 - [docs/ci.md](docs/ci.md): running ravel in CI: a ready-made command line
   (`run_sweep`), pull-request and nightly workflows, and regression tests from
   saved reproducers.

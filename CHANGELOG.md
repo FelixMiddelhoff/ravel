@@ -20,8 +20,9 @@ is listed under "Changed" or "Removed" in the release that makes it.
 - `tools/ravel_trace.py`: `summary`, `show`, `timeline` and `diff` for trace files.
 - Documentation: a tutorial, a porting guide, a debugging guide, a concepts page,
   a CI guide, a key-value store walkthrough, a comparison with related tools, and a
-  troubleshooting guide. Every code and output block in them is generated from real
-  programs and checked in CI (`tools/check_docs.py`).
+  troubleshooting guide. Every code and output block is generated from real programs,
+  and every error message quoted is looked up in the source, both checked in CI
+  (`tools/check_docs.py`).
 - The API reference is published to GitHub Pages.
 
 ### Changed
