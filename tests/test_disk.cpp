@@ -60,7 +60,7 @@ TEST(disk_reads_are_cut_at_the_end_of_the_file) {
   ravel::Disk& disk = sim.add_disk("d");
   std::string middle;
   std::string past_end;
-  ravel::DiskStatus missing_status = ravel::DiskStatus::IoError;
+  ravel::DiskStatus missing_status = ravel::DiskStatus::Ok;
   std::string missing;
   run_with_disk(sim, disk, [&]() -> ravel::Task {
     co_await disk.write("f", 0, "0123456789");
@@ -72,7 +72,7 @@ TEST(disk_reads_are_cut_at_the_end_of_the_file) {
   });
   CHECK(middle == "89");
   CHECK(past_end.empty());
-  CHECK(missing_status == ravel::DiskStatus::Ok);
+  CHECK(missing_status == ravel::DiskStatus::NotFound);
   CHECK(missing.empty());
 }
 
@@ -202,11 +202,14 @@ TEST(disk_crash_outcomes_follow_the_recorded_choices) {
     });
     return disk.durable_contents("f").size();
   };
-  CHECK(crash_with({0}) == 0);        // Lost.
-  CHECK(crash_with({2}) == 1300);     // Whole.
-  CHECK(crash_with({1, 1}) == 512);   // Torn after one sector.
-  CHECK(crash_with({1, 2}) == 1024);  // Torn after two.
-  CHECK(crash_with({1, 0}) == 0);     // Torn before the first sector: lost.
+  // The first choice is whether the file's creation survives (1), then the
+  // fate of its one unsynced write.
+  CHECK(crash_with({0}) == 0);           // The file itself is gone.
+  CHECK(crash_with({1, 0}) == 0);        // Write lost.
+  CHECK(crash_with({1, 2}) == 1300);     // Whole.
+  CHECK(crash_with({1, 1, 1}) == 512);   // Torn after one sector.
+  CHECK(crash_with({1, 1, 2}) == 1024);  // Torn after two.
+  CHECK(crash_with({1, 1, 0}) == 0);     // Torn before the first sector: lost.
 }
 
 TEST(disk_crash_fails_operations_still_in_flight) {

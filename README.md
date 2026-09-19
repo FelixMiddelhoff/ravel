@@ -68,8 +68,10 @@ durable after `sync`, and a crash loses, tears or keeps each unsynced write.
 
 ```cpp
 auto& disk = sim.add_disk("ssd", {.latency_min = 1, .latency_max = 10});
-co_await disk.write("wal", 0, "commit #1");
-co_await disk.sync("wal");       // without this, disk.crash() may lose the commit
+co_await disk.write("wal/000", 0, "commit #1");
+co_await disk.sync("wal/000");   // without this, disk.crash() may lose the commit
+co_await disk.rename("conf.tmp", "conf");
+co_await disk.sync_dir("");      // a rename is only durable after this
 ```
 
 Tasks are C++20 coroutines. At every `co_await scheduler.yield()` or
@@ -87,7 +89,7 @@ to the earliest wake-up.
 | `Channel` / `FaultSpec` | one-way message channel with loss, latency, optional reordering | - |
 | Multi-seed runner (`run_seeds`) | parallel over seeds, thread-count-independent report | - |
 | Shrinking (`shrink`, `replay`) | minimizes a failing run; saves a replayable choices file | - |
-| `Disk` / `DiskFaultSpec` | virtual files with write-back cache, `sync`, torn writes and lost writes on `crash()`, ENOSPC, I/O errors, latency | - |
+| `Disk` / `DiskFaultSpec` | virtual files and directories: write-back cache, `sync`, `rename`, `remove`, `sync_dir`, `list`; `crash()` loses, tears or keeps unsynced data and directory changes; ENOSPC, I/O errors, latency | - |
 
 ## Building
 

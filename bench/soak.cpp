@@ -59,8 +59,8 @@ void lossy_link(ravel::Simulation& sim) {
   sim.add_invariant("all_delivered", [&received] { return received == 30; });
 }
 
-// A disk with latency and both kinds of I/O error, a worker that writes and
-// syncs, and a power cut at a random time.
+// A disk with latency and both kinds of I/O error, a worker that writes,
+// syncs, renames and lists, and a power cut at a random time.
 void faulty_disk(ravel::Simulation& sim) {
   ravel::Disk& disk = sim.add_disk("d", {.latency_min = 1,
                                          .latency_max = 8,
@@ -71,6 +71,10 @@ void faulty_disk(ravel::Simulation& sim) {
       co_await disk.write("log", static_cast<std::uint64_t>(i) * 600, std::string(600, 'x'));
       if (i % 3 == 0) co_await disk.sync("log");
       co_await disk.read("log", 0, 4096);
+      co_await disk.write("meta/tmp", 0, std::string(50, 'm'));
+      co_await disk.rename("meta/tmp", "meta/current");
+      if (i % 2 == 0) co_await disk.sync_dir("meta");
+      co_await disk.list("meta");
     }
   });
   sim.scheduler().spawn("power_cut", [&sim, &disk]() -> ravel::Task {

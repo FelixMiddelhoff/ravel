@@ -1,5 +1,6 @@
 add_executable(ravel_tests
   test_disk.cpp
+  test_disk_names.cpp
   test_main.cpp
   test_network.cpp
   test_quorum_register.cpp
