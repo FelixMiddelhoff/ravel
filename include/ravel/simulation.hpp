@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <functional>
 #include <iosfwd>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <string>
@@ -35,6 +36,11 @@ struct SimulationOptions {
   // Upper bound on scheduler steps, so a livelocked system fails the run
   // instead of hanging it.
   std::uint64_t max_steps = 1'000'000;
+
+  // Virtual time after which the run stops, without failing. Timers due later
+  // never fire. Set it for systems that never go quiet on their own, such as
+  // ones with heartbeats. The default lets a run go on until nothing is left.
+  VirtualClock::Tick time_limit = std::numeric_limits<VirtualClock::Tick>::max();
 
   // When set, a failed run writes its trace here as
   // `ravel-seed-<seed>.trace.jsonl`. Empty (the default) writes no files.

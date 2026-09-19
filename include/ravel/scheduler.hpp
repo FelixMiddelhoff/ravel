@@ -7,6 +7,7 @@
 #include <deque>
 #include <exception>
 #include <functional>
+#include <limits>
 #include <queue>
 #include <string>
 #include <thread>
@@ -36,6 +37,8 @@ enum class RunStatus {
   Completed,         // No runnable task and no pending timer.
   TaskThrew,         // A task let an exception escape; the run stopped there.
   StepLimitReached,  // Still runnable work after `max_steps` (likely a livelock).
+  TimeLimitReached,  // The next timer is past the time limit. Not a failure: it is how a
+                     // system that never goes quiet (a server with heartbeats) is stopped.
 };
 
 struct RunReport {
@@ -107,9 +110,11 @@ class Scheduler {
     return SleepAwaiter(*this, duration);
   }
 
-  // Runs until every task has finished, a task throws, or `max_steps` steps
-  // have been taken.
-  RunReport run_until_quiescent(std::uint64_t max_steps);
+  // Runs until nothing is left to happen, a task throws, `max_steps` steps have
+  // been taken, or the next timer falls after `time_limit` on the virtual clock.
+  RunReport run_until_quiescent(
+      std::uint64_t max_steps,
+      VirtualClock::Tick time_limit = std::numeric_limits<VirtualClock::Tick>::max());
 
   const std::string& task_name(TaskId id) const { return slots_.at(id).name; }
 

@@ -36,8 +36,9 @@ struct FaultSpec {
 //
 //   channel.send("ping");                           // never blocks
 //   ravel::Message m = co_await channel.receive();  // blocks until one arrives
+//   auto maybe = co_await channel.receive_within(50);  // or gives up after 50 ticks
 //
-// At most one task may wait in receive() at a time.
+// At most one task may wait to receive at a time.
 class Channel {
  public:
   Channel(ChannelId id, std::string from, std::string to, FaultSpec fault,
@@ -69,10 +70,36 @@ class Channel {
 
   [[nodiscard]] ReceiveAwaiter receive() noexcept { return ReceiveAwaiter(*this); }
 
+  // Like ReceiveAwaiter, but gives up: yields nothing if no message has
+  // arrived once `timeout` virtual ticks have passed.
+  class TimedReceiveAwaiter {
+   public:
+    bool await_ready() const noexcept { return false; }
+    void await_suspend(std::coroutine_handle<>) const { channel_.wait_for_message(timeout_); }
+    std::optional<Message> await_resume() const { return channel_.take_message_if_any(); }
+
+   private:
+    friend class Channel;
+    TimedReceiveAwaiter(Channel& channel, VirtualClock::Tick timeout) noexcept
+        : channel_(channel), timeout_(timeout) {}
+    Channel& channel_;
+    VirtualClock::Tick timeout_;
+  };
+
+  [[nodiscard]] TimedReceiveAwaiter receive_within(VirtualClock::Tick timeout) noexcept {
+    return TimedReceiveAwaiter(*this, timeout);
+  }
+
+  // Throws away messages that were delivered but not yet received. Messages
+  // still in flight are unaffected. Meant for the receiving task itself, for
+  // instance when it restarts after a simulated crash; clearing under a
+  // receive that is about to return a message fails that receive.
+  void clear_inbox() { inbox_.clear(); }
  private:
   void deliver(Message message);
-  void wait_for_message();
+  void wait_for_message(std::optional<VirtualClock::Tick> timeout = std::nullopt);
   Message take_message();
+  std::optional<Message> take_message_if_any();
   void record(TraceEventKind kind) { trace_.record({scheduler_.now(), id_, kind}); }
 
   ChannelId id_;
@@ -84,7 +111,13 @@ class Channel {
   Trace& trace_;
 
   std::deque<Message> inbox_;                // Delivered, not yet received.
-  std::optional<TaskId> waiting_receiver_;   // Task blocked in receive().
+
+  struct Waiter {
+    TaskId task;
+    std::uint64_t id;  // Tells this wait apart from later ones, for timeouts.
+  };
+  std::optional<Waiter> waiting_receiver_;   // Task blocked in receive().
+  std::uint64_t waits_started_ = 0;
   VirtualClock::Tick last_delivery_at_ = 0;  // Keeps order when reordering is off.
 };
 

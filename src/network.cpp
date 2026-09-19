@@ -48,14 +48,14 @@ void Channel::deliver(Message message) {
   record(TraceEventKind::MessageDelivered);
 
   if (waiting_receiver_) {
-    scheduler_.make_runnable(*waiting_receiver_);
+    scheduler_.make_runnable(waiting_receiver_->task);
     waiting_receiver_.reset();
   }
 }
 
 // Called as the receiving task suspends. If a message is already waiting the
 // task just goes back on the run queue, so every receive is a scheduling point.
-void Channel::wait_for_message() {
+void Channel::wait_for_message(std::optional<VirtualClock::Tick> timeout) {
   if (!inbox_.empty()) {
     scheduler_.make_runnable(scheduler_.current_task());
     return;
@@ -63,13 +63,33 @@ void Channel::wait_for_message() {
   if (waiting_receiver_) {
     throw std::logic_error("Channel: a second task is already waiting to receive");
   }
-  waiting_receiver_ = scheduler_.current_task();
+
+  const std::uint64_t wait_id = ++waits_started_;
+  waiting_receiver_ = Waiter{scheduler_.current_task(), wait_id};
+  if (timeout) {
+    // If the receiver is still waiting on this same wait when the time is up,
+    // wake it with nothing. A message that got there first has ended the wait,
+    // so the timer finds a different (or no) waiter and does nothing.
+    scheduler_.call_after(*timeout, [this, wait_id] {
+      if (!waiting_receiver_ || waiting_receiver_->id != wait_id) return;
+      scheduler_.make_runnable(waiting_receiver_->task);
+      waiting_receiver_.reset();
+    });
+  }
 }
 
 Message Channel::take_message() {
+  if (inbox_.empty()) {
+    throw std::logic_error("Channel: the inbox was cleared while a receive was about to return");
+  }
   Message message = std::move(inbox_.front());
   inbox_.pop_front();
   return message;
+}
+
+std::optional<Message> Channel::take_message_if_any() {
+  if (inbox_.empty()) return std::nullopt;  // The wait timed out.
+  return take_message();
 }
 
 }  // namespace ravel

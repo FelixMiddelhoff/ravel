@@ -88,7 +88,8 @@ std::exception_ptr Scheduler::resume_task(TaskId id) {
   return error;
 }
 
-RunReport Scheduler::run_until_quiescent(std::uint64_t max_steps) {
+RunReport Scheduler::run_until_quiescent(std::uint64_t max_steps,
+                                         VirtualClock::Tick time_limit) {
   RunReport report;
 
   // Forget the running thread however this function is left.
@@ -102,6 +103,10 @@ RunReport Scheduler::run_until_quiescent(std::uint64_t max_steps) {
 
   while (has_pending_work()) {
     if (runnable_.empty()) {
+      if (timers_.top().due > time_limit) {
+        report.status = RunStatus::TimeLimitReached;
+        return report;
+      }
       fire_earliest_timers();  // May run actions that wake nobody; look again.
       continue;
     }

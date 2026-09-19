@@ -10,6 +10,7 @@ add_executable(ravel_tests
   test_shrink.cpp
   test_shrink_passes.cpp
   test_simulation.cpp
+  test_timeouts.cpp
   test_trace.cpp
 )
 target_link_libraries(ravel_tests PRIVATE ravel::ravel)

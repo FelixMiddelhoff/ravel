@@ -111,14 +111,15 @@ std::string Simulation::dump_trace() const {
 }
 
 Result Simulation::run_until_quiescent() {
-  const RunReport report = scheduler_.run_until_quiescent(options_.max_steps);
+  const RunReport report = scheduler_.run_until_quiescent(options_.max_steps, options_.time_limit);
 
   Result result;
   result.seed = seed_;
   result.steps = report.steps;
   result.trace_digest = trace_.digest();
-  result.failure =
-      report.status == RunStatus::Completed ? first_failed_invariant() : report.failure;
+  const bool ran_to_the_end =
+      report.status == RunStatus::Completed || report.status == RunStatus::TimeLimitReached;
+  result.failure = ran_to_the_end ? first_failed_invariant() : report.failure;
   result.ok = result.failure.empty();
 
   if (!result.ok && !options_.trace_dir.empty()) {

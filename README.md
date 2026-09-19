@@ -65,7 +65,11 @@ auto& link = sim.add_channel("client", "server", {.loss_probability = 0.05,
                                                    .latency_min = 10, .latency_max = 50});
 link.send("ping");                             // may be dropped or delayed
 ravel::Message m = co_await link.receive();    // inside a task
+auto maybe = co_await link.receive_within(100); // gives up after 100 ticks
 ```
+
+Systems that never go quiet on their own (heartbeats, election timers) stop at
+`SimulationOptions::time_limit`, and their invariants are checked then.
 
 Disks model what makes storage code hard: a write is visible at once but only
 durable after `sync`, and a crash loses, tears or keeps each unsynced write.
