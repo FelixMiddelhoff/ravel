@@ -50,7 +50,7 @@ function(ravel_configure_library target)
   if(RAVEL_COVERAGE)
     # Public, so the test programs that link the library are instrumented and
     # write their counters at exit.
-    target_compile_options(${target} PUBLIC --coverage -O0 -g)
+    target_compile_options(${target} PUBLIC --coverage -fprofile-update=atomic -O0 -g)
     target_link_options(${target} PUBLIC --coverage)
   endif()
 endfunction()
