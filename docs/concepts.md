@@ -154,6 +154,7 @@ The nonzero numbers left over are the **ingredients of the bug**. In the tutoria
   will not be found.
 - It is single-threaded per run. Real threads inside the code under test make runs
   unrepeatable.
+- It has known limits, listed in [known-limitations.md](known-limitations.md).
 - It is not a proof. Passing a million seeds means no bug was found in a million
   tries, which is a lot more than a few hand-written tests, but it is not "none exist".
 

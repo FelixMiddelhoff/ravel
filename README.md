@@ -207,6 +207,10 @@ depend on byte order, but that is an argument, not a test.
 - [docs/disk-model.md](docs/disk-model.md): the exact rules of the virtual disk, how they
   compare with real filesystems, and how they are tested.
 - [docs/abi-policy.md](docs/abi-policy.md): what may change in the C ABI.
+- [docs/known-limitations.md](docs/known-limitations.md): what ravel does not model, and what "tested" does
+  and does not mean.
+- [docs/known-limitations.md](docs/known-limitations.md): what ravel does not model, and what "tested" does
+  and does not mean.
 
 ## C ABI
 
