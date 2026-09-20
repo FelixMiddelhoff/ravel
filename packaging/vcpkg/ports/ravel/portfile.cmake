@@ -16,6 +16,7 @@ vcpkg_cmake_configure(
         -DRAVEL_BUILD_TESTS=OFF
         -DRAVEL_BUILD_BENCH=OFF
         -DRAVEL_BUILD_EXAMPLES=OFF
+        -DRAVEL_BUILD_FUZZ=OFF
 )
 
 vcpkg_cmake_install()

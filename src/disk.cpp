@@ -363,7 +363,7 @@ void Disk::crash() {
         case 1: {
           // Whole sectors reach the platter; the write is cut at a sector edge.
           const std::uint64_t sectors = (write.data.size() + kSectorSize - 1) / kSectorSize;
-          const std::size_t kept_bytes = rng_.next_below(sectors) * kSectorSize;
+          const auto kept_bytes = static_cast<std::size_t>(rng_.next_below(sectors) * kSectorSize);
           if (kept_bytes > 0) apply(inode.durable, write.offset, write.data.substr(0, kept_bytes));
           break;
         }

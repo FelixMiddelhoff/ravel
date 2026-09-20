@@ -67,7 +67,7 @@ void Scheduler::fire_earliest_timers() {
 // are all 0 is plain round-robin: the simplest schedule, which shrinking
 // steers toward. That is why the queue keeps its order on removal.
 TaskId Scheduler::take_random_runnable_task() {
-  const std::size_t index = rng_.next_below(runnable_.size());
+  const auto index = static_cast<std::size_t>(rng_.next_below(runnable_.size()));
   const TaskId id = runnable_[index];
   runnable_.erase(runnable_.begin() + static_cast<std::ptrdiff_t>(index));
   return id;

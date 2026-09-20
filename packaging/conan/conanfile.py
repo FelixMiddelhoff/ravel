@@ -40,6 +40,7 @@ class RavelConan(ConanFile):
         toolchain.variables["RAVEL_BUILD_TESTS"] = False
         toolchain.variables["RAVEL_BUILD_BENCH"] = False
         toolchain.variables["RAVEL_BUILD_EXAMPLES"] = False
+        toolchain.variables["RAVEL_BUILD_FUZZ"] = False
         toolchain.generate()
 
     def build(self):

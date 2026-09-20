@@ -135,6 +135,7 @@ TEST(runner_fails_a_seed_whose_setup_throws) {
 
 TEST(simulation_state_outlives_its_tasks) {
   struct Flag {
+    explicit Flag(bool* flag) : destroyed(flag) {}
     bool* destroyed;
     ~Flag() { *destroyed = true; }
   };
