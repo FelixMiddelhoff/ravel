@@ -14,6 +14,7 @@ is listed under "Changed" or "Removed" in the release that makes it.
   tests and uploads an HTML report.
 - CMake option `RAVEL_WERROR` (warnings as errors, used in CI). Every target now builds
   with `-Wall -Wextra -Wpedantic -Wconversion -Wshadow` (MSVC `/W4`), not only the library.
+- `tools/mutation.sh` and `mull.yml`: mutation testing of the library with Mull (Clang).
 - CI jobs `warnings` (GCC and Clang) and `static-analysis` (clang-tidy on the library, cppcheck).
 
 ### Fixed

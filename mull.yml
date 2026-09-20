@@ -1,0 +1,22 @@
+# Mutation testing with Mull (see tools/mutation.sh). Only the library is mutated.
+mutators:
+  - cxx_arithmetic
+  - cxx_comparison
+  - cxx_boundary
+  - cxx_logical
+  - cxx_assign
+  - cxx_increment
+  - cxx_remove_void_call
+  - cxx_calls
+  - cxx_bitwise
+  - cxx_const_assign
+  - cxx_init_const
+  - negate_mutator
+  - replace_call_mutator
+  - remove_void_function_mutator
+timeout: 60000
+includePaths:
+  - '.*/src/.*'
+excludePaths:
+  - '.*/tests/.*'
+  - '.*/usr/.*'

@@ -170,6 +170,21 @@ TEST(choice_lists_round_trip_through_text) {
   CHECK(ravel::read_choices(empty).empty());
 }
 
+TEST(choice_lists_are_written_sixteen_to_a_line) {
+  const auto written = [](std::size_t count) {
+    ravel::Choices choices;
+    for (std::size_t i = 0; i < count; ++i) choices.push_back(i);
+    std::ostringstream text;
+    ravel::write_choices(text, choices);
+    return text.str();
+  };
+  CHECK(written(0) == "ravel-choices 1\n0\n");
+  CHECK(written(1) == "ravel-choices 1\n1\n0\n");
+  CHECK(written(16) == "ravel-choices 1\n16\n0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15\n");
+  CHECK(written(17) == "ravel-choices 1\n17\n0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15\n16\n");
+  CHECK(written(3) == "ravel-choices 1\n3\n0 1 2\n");
+}
+
 TEST(choice_list_reader_rejects_bad_input) {
   const auto rejects = [](const std::string& text) {
     std::istringstream in(text);

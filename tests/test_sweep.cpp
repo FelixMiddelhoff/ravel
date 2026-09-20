@@ -221,6 +221,7 @@ TEST(sweep_main_names_the_program_without_its_directory_or_exe_suffix) {
   CHECK(contains(captured.str(), "my_prog"));
   CHECK(!contains(captured.str(), "my_prog.exe"));
   CHECK(!contains(captured.str(), "tools"));
+  CHECK(!contains(captured.str(), "/my_prog"));
 }
 
 

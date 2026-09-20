@@ -10,6 +10,7 @@ add_executable(ravel_tests
   test_runner.cpp
   test_scheduler.cpp
   test_shrink.cpp
+  test_shrink_golden.cpp
   test_shrink_passes.cpp
   test_simulation.cpp
   test_stress.cpp

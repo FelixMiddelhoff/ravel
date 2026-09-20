@@ -109,6 +109,20 @@ TEST(rng_next_below_handles_bounds_that_reject_many_raw_values) {
   for (int i = 0; i < 200; ++i) CHECK(rng.next_below(kBound) < kBound);
 }
 
+TEST(rng_next_below_is_not_biased_when_the_bound_does_not_divide_2_to_the_64) {
+  // 3 * 2^62 leaves a quarter of the raw range over; without rejection the
+  // values below 2^62 would come up twice as often (1/2 instead of 1/3).
+  constexpr std::uint64_t kBound = std::uint64_t{3} << 62;
+  constexpr std::uint64_t kThird = std::uint64_t{1} << 62;
+  ravel::VirtualRng rng(11);
+  int low = 0;
+  constexpr int kDraws = 6000;
+  for (int i = 0; i < kDraws; ++i) {
+    if (rng.next_below(kBound) < kThird) ++low;
+  }
+  CHECK(low > kDraws * 28 / 100 && low < kDraws * 38 / 100);
+}
+
 TEST(rng_next_between_covers_the_whole_64_bit_range) {
   ravel::VirtualRng rng(3);
   rng.next_between(0, UINT64_MAX);  // span + 1 would overflow; must not crash or loop.
