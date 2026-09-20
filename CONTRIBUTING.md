@@ -105,8 +105,11 @@ still holds, not just that the change compiles.
    `include/ravel/version.hpp`, `src/version.cpp`, `packaging/conan/conanfile.py`
    and `packaging/vcpkg/ports/ravel/vcpkg.json`. (A test checks that
    `version.hpp` and `version.cpp` agree.)
-3. Run the whole test suite and `ravel_soak` with a large seed count
-   (`ravel_soak 100000`).
+3. Run the whole test suite, then start the `soak` workflow (Actions tab, or
+   `gh workflow run soak.yml`) and wait for all three jobs: the soak on Linux, macOS and
+   Windows, the thread-pool stress under ThreadSanitizer, and the sanitized soak. Release
+   only if it is green, and link the run in the release notes. For a bigger local run:
+   `ravel_soak 100000`.
 4. Tag `vX.Y.Z` and push the tag, then create the release.
 5. Compute the SHA-512 of the tag's tarball and put it in
    `packaging/vcpkg/ports/ravel/portfile.cmake`; verify with a local vcpkg install.
