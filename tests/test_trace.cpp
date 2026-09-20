@@ -32,6 +32,27 @@ std::string read_file(const std::filesystem::path& path) {
 
 }  // namespace
 
+TEST(trace_digest_is_fnv1a_over_the_little_endian_bytes_of_each_field) {
+  // Written out separately from the library; the big values use every byte.
+  const auto fnv = [](std::uint64_t digest, std::uint64_t value) {
+    for (int byte = 0; byte < 8; ++byte) {
+      digest ^= (value >> (8 * byte)) & 0xFF;
+      digest *= 0x100000001B3ULL;
+    }
+    return digest;
+  };
+  ravel::Trace trace;
+  CHECK(trace.digest() == 0xCBF29CE484222325ULL);
+  const ravel::TraceEvent event{0x0123456789ABCDEFULL, 0xFEDCBA9876543210ULL,
+                                ravel::TraceEventKind::DiskSynced};
+  trace.record(event);
+  std::uint64_t expected = 0xCBF29CE484222325ULL;
+  expected = fnv(expected, event.time);
+  expected = fnv(expected, event.subject);
+  expected = fnv(expected, static_cast<std::uint64_t>(event.kind));
+  CHECK(trace.digest() == expected);
+}
+
 TEST(trace_is_written_as_json_lines) {
   ravel::Simulation sim(7);
   auto& channel = sim.add_channel("a", "b", {});
