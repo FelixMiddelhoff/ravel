@@ -146,25 +146,26 @@ void annotate_for_github(std::ostream& out, const std::string& message) {
 
 int replay_file(std::ostream& out, const Request& request, const SimulationSetup& setup,
                 const SimulationOptions& simulation) {
-  std::ifstream file(*request.replay_file);
-  if (!file) throw UsageError("cannot open '" + *request.replay_file + "'");
+  const std::string path = request.replay_file.value_or(std::string());
+  std::ifstream file(path);
+  if (!file) throw UsageError("cannot open '" + path + "'");
 
   Choices choices;
   try {
     choices = read_choices(file);
   } catch (const std::exception& e) {
-    throw UsageError("'" + *request.replay_file + "': " + e.what());
+    throw UsageError("'" + path + "': " + e.what());
   }
 
   const Result result = replay(setup, choices, simulation);
-  out << "replay of " << forward_slashes(*request.replay_file) << " (" << choices.size()
+  out << "replay of " << forward_slashes(path) << " (" << choices.size()
       << " choices): ";
   if (result.ok) {
     out << "ok\n";
     return 0;
   }
   out << "FAILED: " << result.failure << "\n";
-  annotate_for_github(out, "replay of " + forward_slashes(*request.replay_file) +
+  annotate_for_github(out, "replay of " + forward_slashes(path) +
                                " failed: " + result.failure);
   return 1;
 }

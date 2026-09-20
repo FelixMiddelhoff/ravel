@@ -22,7 +22,7 @@ extern "C" {
 #  define RAVEL_API
 #endif
 
-typedef struct ravel_simulation ravel_simulation;
+typedef struct ravel_simulation ravel_simulation;  // NOLINT(modernize-use-using): C header
 
 RAVEL_API ravel_simulation* ravel_simulation_create(uint64_t seed);
 RAVEL_API void ravel_simulation_destroy(ravel_simulation* sim);
