@@ -5,6 +5,7 @@ add_executable(ravel_tests
   test_disk_names.cpp
   test_main.cpp
   test_network.cpp
+  test_properties.cpp
   test_raft.cpp
   test_rng.cpp
   test_runner.cpp
