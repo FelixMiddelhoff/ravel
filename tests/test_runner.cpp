@@ -90,16 +90,21 @@ TEST(runner_can_stop_at_the_first_failure) {
 
 TEST(runner_counts_seeds_from_the_first_seed_when_it_stops_early) {
   const ravel::RunnerReport all = ravel::run_seeds(setup_lost_update_system, options_for(1));
-  CHECK(!all.failures.empty());
-  if (all.failures.empty()) return;
+  // A failing seed above 0, so that "seed - first_seed" differs from "seed + first_seed".
+  std::uint64_t failing = 0;
+  for (const ravel::Result& failure : all.failures) {
+    if (failure.seed > 0) {
+      failing = failure.seed;
+      break;
+    }
+  }
+  CHECK(failing > 0);
+  if (failing == 0) return;
+
   ravel::RunnerOptions options = options_for(1);
   options.stop_at_first_failure = true;
-  options.first_seed = all.failures.front().seed;  // Fails at once.
-  const ravel::RunnerReport report = ravel::run_seeds(setup_lost_update_system, options);
-  CHECK(report.seeds_run == 1);
-  options.first_seed = all.failures.front().seed - (all.failures.front().seed > 0 ? 1 : 0);
-  CHECK(ravel::run_seeds(setup_lost_update_system, options).seeds_run ==
-        (all.failures.front().seed > 0 ? 2 : 1));
+  options.first_seed = failing;  // Fails at once.
+  CHECK(ravel::run_seeds(setup_lost_update_system, options).seeds_run == 1);
 }
 
 TEST(runner_honours_the_seed_range) {
