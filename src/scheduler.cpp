@@ -10,7 +10,7 @@ namespace {
 
 std::string describe(const std::exception_ptr& error) {
   try {
-    std::rethrow_exception(error);
+    std::rethrow_exception(error);  // cppcheck-suppress missingReturn
   } catch (const std::exception& e) {
     return e.what();
   } catch (...) {

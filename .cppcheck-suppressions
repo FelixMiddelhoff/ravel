@@ -1,3 +1,12 @@
-# cppcheck suppressions; one per line, each with the reason above it.
-# None needed yet.
+# cppcheck suppressions, each with the reason.
+# System headers are not needed for the analysis.
 missingIncludeSystem
+# Awaiter and promise members must be non-static: the coroutine machinery calls them on an object.
+functionStatic
+# A local named `name` or `write` beside a member function of the same name is harmless
+# and reads better than the alternatives.
+shadowFunction
+# Raw loops are clearer than std::accumulate/fill/replace_if in these few places.
+useStlAlgorithm
+# Plain aggregates filled in by designated initializers; every construction sets all members.
+uninitMemberVarNoCtor
