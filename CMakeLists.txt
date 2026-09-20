@@ -19,6 +19,7 @@ option(RAVEL_BUILD_BENCH    "Build the perf bench"         ${RAVEL_STANDALONE})
 option(RAVEL_BUILD_EXAMPLES "Build the example programs"   ${RAVEL_STANDALONE})
 option(RAVEL_BUILD_FUZZ     "Build the fuzz targets and replay their corpora as tests" ${RAVEL_STANDALONE})
 option(RAVEL_FUZZ           "Link the fuzz targets with libFuzzer and sanitizers (Clang)" OFF)
+option(RAVEL_WERROR         "Treat compiler warnings as errors (CI)" OFF)
 option(RAVEL_COVERAGE       "Instrument for line/branch coverage (GCC or Clang)" OFF)
 
 set(RAVEL_SOURCES
@@ -36,6 +37,23 @@ set(RAVEL_SOURCES
   src/version.cpp
 )
 
+# Strict warnings for every target we build, not just the library.
+function(ravel_warnings target)
+  if(MSVC)
+    target_compile_options(${target} PRIVATE /W4 /permissive-)
+    if(RAVEL_WERROR)
+      target_compile_options(${target} PRIVATE /WX)
+    endif()
+  else()
+    target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Wshadow
+      # Designated initializers deliberately leave defaulted members out.
+      -Wno-missing-field-initializers)
+    if(RAVEL_WERROR)
+      target_compile_options(${target} PRIVATE -Werror)
+    endif()
+  endif()
+endfunction()
+
 # Declared once so the static and shared variants can never drift apart.
 function(ravel_configure_library target)
   target_include_directories(${target} PUBLIC
@@ -43,11 +61,7 @@ function(ravel_configure_library target)
     $<INSTALL_INTERFACE:include>
   )
   target_compile_features(${target} PUBLIC cxx_std_20)
-  if(MSVC)
-    target_compile_options(${target} PRIVATE /W4 /permissive-)
-  else()
-    target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic)
-  endif()
+  ravel_warnings(${target})
   target_link_libraries(${target} PUBLIC Threads::Threads)
   if(RAVEL_FUZZ)
     # Instrument the library so libFuzzer can see which of its branches an

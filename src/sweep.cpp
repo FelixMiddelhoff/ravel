@@ -16,7 +16,7 @@ namespace {
 
 // What the command line asked for.
 struct Request {
-  std::uint64_t seeds;
+  std::uint64_t seeds = 0;
   std::uint64_t first_seed = 0;
   unsigned threads = 0;
   std::string trace_dir;
@@ -271,8 +271,7 @@ int run_sweep_main(int argc, char** argv, const SimulationSetup& setup,
   std::string program = argc > 0 ? argv[0] : "test";
   const std::size_t slash = program.find_last_of("/\\");
   if (slash != std::string::npos) program = program.substr(slash + 1);
-  if (program.size() > 4 && (program.compare(program.size() - 4, 4, ".exe") == 0 ||
-                             program.compare(program.size() - 4, 4, ".EXE") == 0)) {
+  if (program.ends_with(".exe") || program.ends_with(".EXE")) {
     program.resize(program.size() - 4);  // Shown in "replay it:" hints; keep them the same everywhere.
   }
 

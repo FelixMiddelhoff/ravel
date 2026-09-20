@@ -35,7 +35,7 @@ The server, one put at a time:
 <!-- snippet: docs/snippets/kv_store.hpp#kv_server -->
 ```cpp
     // The server appends each put to the log and tells the client it is stored.
-    sim.scheduler().spawn("server", [&sim, &state, &disk, bug]() -> ravel::Task {
+    sim.scheduler().spawn("server", [&state, &disk, bug]() -> ravel::Task {
       const std::uint64_t boot = disk.crash_count();  // If the power goes, this process is gone.
       const auto alive = [&disk, boot] { return disk.crash_count() == boot; };
       const auto ok = [&alive](ravel::DiskStatus status) {

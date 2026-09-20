@@ -73,7 +73,7 @@ void faulty_disk(ravel::Simulation& sim) {
                                          .latency_max = 8,
                                          .write_error_probability = 0.1,
                                          .sync_error_probability = 0.1});
-  sim.scheduler().spawn("worker", [&sim, &disk]() -> ravel::Task {
+  sim.scheduler().spawn("worker", [&disk]() -> ravel::Task {
     for (int i = 0; i < 12; ++i) {
       co_await disk.write("log", static_cast<std::uint64_t>(i) * 600, std::string(600, 'x'));
       if (i % 3 == 0) co_await disk.sync("log");

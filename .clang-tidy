@@ -1,3 +1,18 @@
+# Checks left off, and why. The rest run in CI (`static-analysis` job) and must be clean.
+#  modernize-use-trailing-return-type, cppcoreguidelines-avoid-magic-numbers: style only.
+#  cppcoreguidelines-pro-bounds-pointer-arithmetic: argv handling.
+#  cppcoreguidelines-owning-memory: the C API hands out raw owning pointers by design.
+#  cppcoreguidelines-pro-bounds-avoid-unchecked-container-access: flags every operator[];
+#    the indices are checked by the surrounding logic and tests.
+#  bugprone-easily-swappable-parameters: the public API has adjacent same-typed parameters
+#    (seed, count) that are documented; renaming to strong types is a 1.0 question.
+#  modernize-use-designated-initializers, modernize-return-braced-init-list,
+#  modernize-use-scoped-lock, modernize-use-ranges, modernize-use-nodiscard,
+#  modernize-avoid-c-arrays / cppcoreguidelines-avoid-c-arrays: style only.
+#  cppcoreguidelines-pro-type-vararg, cppcoreguidelines-pro-bounds-array-to-pointer-decay:
+#    one snprintf into a local buffer (JSON escaping).
+#  cppcoreguidelines-no-malloc: the Windows _dupenv_s result must be free()d.
+#  cppcoreguidelines-avoid-const-or-ref-data-members: a reference member in a local guard.
 Checks: >
   -*,
   bugprone-*,
@@ -7,6 +22,19 @@ Checks: >
   -modernize-use-trailing-return-type,
   -cppcoreguidelines-avoid-magic-numbers,
   -cppcoreguidelines-pro-bounds-pointer-arithmetic,
-  -cppcoreguidelines-owning-memory
-WarningsAsErrors: ''
+  -cppcoreguidelines-owning-memory,
+  -cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,
+  -bugprone-easily-swappable-parameters,
+  -modernize-use-designated-initializers,
+  -modernize-return-braced-init-list,
+  -modernize-use-scoped-lock,
+  -modernize-use-ranges,
+  -modernize-use-nodiscard,
+  -modernize-avoid-c-arrays,
+  -cppcoreguidelines-avoid-c-arrays,
+  -cppcoreguidelines-pro-type-vararg,
+  -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+  -cppcoreguidelines-no-malloc,
+  -cppcoreguidelines-avoid-const-or-ref-data-members
+WarningsAsErrors: '*'
 HeaderFilterRegex: 'include/ravel/.*'

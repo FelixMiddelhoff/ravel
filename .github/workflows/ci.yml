@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=${{ matrix.config }} -DRAVEL_SHARED=ON
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=${{ matrix.config }} -DRAVEL_SHARED=ON -DRAVEL_WERROR=ON
       - name: Build
         run: cmake --build build --config ${{ matrix.config }}
       - name: Test
@@ -39,6 +39,38 @@ jobs:
         run: cmake --build build-san
       - name: Test
         run: ctest --test-dir build-san --output-on-failure
+
+  warnings:
+    # The build job above uses each OS's default compiler; this adds the other
+    # compiler on Linux, with warnings as errors.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [g++, clang++]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Configure
+        run: cmake -S . -B build-w -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=${{ matrix.compiler }} -DRAVEL_WERROR=ON
+      - name: Build
+        run: cmake --build build-w
+
+  static-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y clang-tidy cppcheck
+      - name: Configure
+        run: cmake -S . -B build-sa -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_COMPILER=clang++
+      - name: clang-tidy
+        # The library and its public headers; .clang-tidy lists what is off and why.
+        run: clang-tidy -p build-sa --quiet src/*.cpp
+      - name: cppcheck
+        # Style and portability findings are errors too. Suppressions live in
+        # .cppcheck-suppressions with a reason each.
+        run: |
+          cppcheck --std=c++20 --enable=warning,style,performance,portability             --inline-suppr --suppressions-list=.cppcheck-suppressions             --error-exitcode=1 --quiet -I include src
 
   coverage:
     runs-on: ubuntu-latest

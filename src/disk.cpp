@@ -95,7 +95,7 @@ Disk::Operation<ListResult> Disk::list(std::string dir) {
 // ---- Helpers ------------------------------------------------------------
 
 void Disk::apply(std::string& bytes, std::uint64_t offset, const std::string& data) {
-  const std::size_t start = static_cast<std::size_t>(offset);
+  const auto start = static_cast<std::size_t>(offset);
   if (bytes.size() < start + data.size()) bytes.resize(start + data.size(), '\0');
   bytes.replace(start, data.size(), data);
 }
@@ -178,7 +178,7 @@ DiskStatus Disk::finish_write(const std::string& path, std::uint64_t offset,
     return DiskStatus::NoSpace;
   }
 
-  InodeId inode_id;
+  InodeId inode_id = 0;
   if (existing == visible_names_.end()) {
     inode_id = next_inode_++;
     visible_names_[path] = inode_id;
@@ -322,7 +322,7 @@ ListResult Disk::finish_list(const std::string& dir, std::uint64_t epoch) {
   const std::string prefix = dir.empty() ? std::string() : dir + "/";
   std::set<std::string> entries;
   for (const auto& name : visible_names_) {
-    if (name.first.compare(0, prefix.size(), prefix) != 0) continue;
+    if (!name.first.starts_with(prefix)) continue;
     const std::string rest = name.first.substr(prefix.size());
     const std::size_t slash = rest.find('/');
     entries.insert(slash == std::string::npos ? rest : rest.substr(0, slash + 1));

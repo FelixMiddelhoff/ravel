@@ -5,6 +5,7 @@
 function(ravel_snippet name)
   add_executable(${name} ${name}.cpp)
   target_link_libraries(${name} PRIVATE ravel::ravel)
+  ravel_warnings(${name})
   target_include_directories(${name} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   if(MSVC)
     target_compile_options(${name} PRIVATE /W4 /permissive-)

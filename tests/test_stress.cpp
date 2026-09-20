@@ -19,8 +19,16 @@
 namespace {
 
 int stress_scale() {
+#ifdef _WIN32
+  char* buffer = nullptr;
+  std::size_t length = 0;
+  if (_dupenv_s(&buffer, &length, "RAVEL_STRESS") != 0 || buffer == nullptr) return 1;
+  const int value = std::atoi(buffer);
+  std::free(buffer);
+#else
   const char* text = std::getenv("RAVEL_STRESS");
   const int value = text != nullptr ? std::atoi(text) : 1;
+#endif
   return value > 0 ? value : 1;
 }
 

@@ -96,6 +96,8 @@ class WorkerPool {
 
   WorkerPool(const WorkerPool&) = delete;
   WorkerPool& operator=(const WorkerPool&) = delete;
+  WorkerPool(WorkerPool&&) = delete;
+  WorkerPool& operator=(WorkerPool&&) = delete;
 
   ~WorkerPool() {
     {

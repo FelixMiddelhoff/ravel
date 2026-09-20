@@ -12,6 +12,9 @@ is listed under "Changed" or "Removed" in the release that makes it.
 
 - CMake option `RAVEL_COVERAGE` and a CI job that builds with coverage, runs the
   tests and uploads an HTML report.
+- CMake option `RAVEL_WERROR` (warnings as errors, used in CI). Every target now builds
+  with `-Wall -Wextra -Wpedantic -Wconversion -Wshadow` (MSVC `/W4`), not only the library.
+- CI jobs `warnings` (GCC and Clang) and `static-analysis` (clang-tidy on the library, cppcheck).
 
 ### Fixed
 

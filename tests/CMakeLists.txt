@@ -18,5 +18,6 @@ add_executable(ravel_tests
   test_trace.cpp
 )
 target_link_libraries(ravel_tests PRIVATE ravel::ravel)
+ravel_warnings(ravel_tests)
 target_include_directories(ravel_tests PRIVATE ${PROJECT_SOURCE_DIR}/examples)
 add_test(NAME ravel_tests COMMAND ravel_tests)

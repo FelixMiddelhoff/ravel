@@ -98,6 +98,10 @@ RunReport Scheduler::run_until_quiescent(std::uint64_t max_steps,
     explicit RunningThread(std::atomic<std::thread::id>& s) : slot(s) {
       slot.store(std::this_thread::get_id());
     }
+    RunningThread(const RunningThread&) = delete;
+    RunningThread& operator=(const RunningThread&) = delete;
+    RunningThread(RunningThread&&) = delete;
+    RunningThread& operator=(RunningThread&&) = delete;
     ~RunningThread() { slot.store(std::thread::id()); }
   } running(running_thread_);
 

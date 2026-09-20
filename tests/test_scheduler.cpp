@@ -84,15 +84,15 @@ TEST(scheduler_sleep_advances_virtual_time_only) {
 
 TEST(scheduler_wakes_sleepers_in_time_order) {
   Harness h(1);
-  std::vector<int> wake_order;
-  for (const int delay : {30, 10, 20}) {
+  std::vector<ravel::VirtualClock::Tick> wake_order;
+  for (const ravel::VirtualClock::Tick delay : {30u, 10u, 20u}) {
     h.scheduler.spawn("sleeper", [&h, &wake_order, delay]() -> ravel::Task {
       co_await h.scheduler.sleep(delay);
       wake_order.push_back(delay);
     });
   }
   h.scheduler.run_until_quiescent(kNoLimit);
-  CHECK((wake_order == std::vector<int>{10, 20, 30}));
+  CHECK((wake_order == std::vector<ravel::VirtualClock::Tick>{10, 20, 30}));
 }
 
 TEST(scheduler_explores_order_of_simultaneous_wakeups) {

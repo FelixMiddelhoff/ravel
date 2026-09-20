@@ -39,8 +39,10 @@ std::optional<std::string> difference(const Observed& first, const Observed& sec
   const std::size_t common = std::min(first.events.size(), second.events.size());
   for (std::size_t step = 0; step < common; ++step) {
     if (first.events[step] == second.events[step]) continue;
-    return "diverged at step " + std::to_string(step) + ": " + first_name + " " +
-           first.event_text[step] + ", " + second_name + " " + second.event_text[step];
+    std::string text = "diverged at step " + std::to_string(step) + ": ";
+    text.append(first_name).append(" ").append(first.event_text[step]).append(", ");
+    text.append(second_name).append(" ").append(second.event_text[step]);
+    return text;
   }
   if (first.events.size() != second.events.size()) {
     const bool first_longer = first.events.size() > second.events.size();
@@ -120,6 +122,7 @@ DeterminismReport check_determinism(const SimulationSetup& setup,
     work();
   } else {
     std::vector<std::thread> threads;
+    threads.reserve(workers);
     for (unsigned i = 0; i < workers; ++i) threads.emplace_back(work);
     for (std::thread& thread : threads) thread.join();
   }

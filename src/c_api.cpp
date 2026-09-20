@@ -24,7 +24,7 @@ ravel_simulation* ravel_simulation_create(uint64_t seed) {
 void ravel_simulation_destroy(ravel_simulation* sim) {
   try {
     delete sim;
-  } catch (...) {
+  } catch (...) {  // NOLINT(bugprone-empty-catch)
     // Nothing useful to do, and nothing may cross the C boundary.
   }
 }
