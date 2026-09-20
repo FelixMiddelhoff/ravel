@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -43,7 +44,7 @@ TEST(trace_digest_is_fnv1a_over_the_little_endian_bytes_of_each_field) {
   };
   ravel::Trace trace;
   CHECK(trace.digest() == 0xCBF29CE484222325ULL);
-  const ravel::TraceEvent event{0x0123456789ABCDEFULL, 0xFEDCBA9876543210ULL,
+  const ravel::TraceEvent event{0x0123456789ABCDEFULL, static_cast<std::size_t>(0xFEDCBA9876543210ULL),
                                 ravel::TraceEventKind::DiskSynced};
   trace.record(event);
   std::uint64_t expected = 0xCBF29CE484222325ULL;
