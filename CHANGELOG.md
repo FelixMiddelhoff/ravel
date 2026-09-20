@@ -8,6 +8,11 @@ is listed under "Changed" or "Removed" in the release that makes it.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-20
+
+Seeds, choice lists and the C ABI are unchanged from 0.3.0: no behavior change apart
+from the shrinking fix below.
+
 ### Added
 
 - NuGet package `Ravel.Dst` for Visual Studio C++ projects (x64, static library with the
@@ -22,9 +27,23 @@ is listed under "Changed" or "Removed" in the release that makes it.
   with `-Wall -Wextra -Wpedantic -Wconversion -Wshadow` (MSVC `/W4`), not only the library.
 - `tools/mutation.sh` and `mull.yml`: mutation testing of the library with Mull (Clang).
 - CI jobs `warnings` (GCC and Clang) and `static-analysis` (clang-tidy on the library, cppcheck).
+- CI job `compilers`: GCC 10, 11 and 14, Clang 14, 15 and 19, and a 32-bit GCC 13 build. The README
+  now lists exactly what is tested.
+- Fuzz targets for the choice-list parser and the sweep command line (`fuzz/`, CMake option
+  `RAVEL_BUILD_FUZZ`, `RAVEL_FUZZ` for libFuzzer), a fuzz smoke job in CI and a manual long-run
+  workflow.
+- Documentation: `docs/disk-model.md` (the exact rules of the virtual disk, and how the model
+  is tested against a reference implementation) and `docs/known-limitations.md`.
+- Property tests, a disk reference-model differential test, thread-pool stress tests, and a
+  coverage floor in CI (97% lines, 92% branches). The soak workflow also runs ThreadSanitizer
+  and ASan/UBSan variants.
 
 ### Fixed
 
+- The library, the tests and the examples now build without warnings on 32-bit targets:
+  several `uint64_t` to `size_t` conversions were unchecked.
+- GCC 10 builds: CMake adds `-fcoroutines` for it, which `<coroutine>` needs there.
+- The Conan recipe and the vcpkg port no longer try to build the fuzz targets.
 - `tools/ravel_trace.py` crashed with a Python traceback on some damaged trace files
   (invalid UTF-8, a header or event that is not a JSON object, an event with a
   missing or wrongly typed field, absurdly deep nesting). It now reports each with
@@ -101,7 +120,8 @@ is listed under "Changed" or "Removed" in the release that makes it.
   with crashes and torn writes, a parallel multi-seed runner, choice-stream
   shrinking with replayable reproducers, JSON Lines traces, and a small C ABI.
 
-[Unreleased]: https://github.com/FelixMiddelhoff/ravel/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/FelixMiddelhoff/ravel/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/FelixMiddelhoff/ravel/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/FelixMiddelhoff/ravel/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/FelixMiddelhoff/ravel/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/FelixMiddelhoff/ravel/releases/tag/v0.1.0
