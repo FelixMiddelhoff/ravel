@@ -164,7 +164,11 @@ independent simulations that share nothing.
 **Is `VirtualRng` secure?** No. It is a fast, portable, reproducible PRNG for
 simulation. Never use it for keys, nonces or tokens.
 
-**Which compilers?** C++20 with coroutines: GCC 10+, Clang 14+, MSVC 2019+.
+**Which compilers?** C++20 with coroutines. CI builds and runs the tests with GCC 10, 11, 13 (also as a 32-bit x86 build) and 14,
+Clang 14, 15, 18 and 19, MSVC (Visual Studio 2022) and Apple Clang. Older or other compilers may work but are not tested.
+GCC 10 needs `-fcoroutines`, which the CMake package adds for you.
+No big-endian target is tested. The digest and the RNG are defined on bytes and integers only, so results should not
+depend on byte order, but that is an argument, not a test.
 
 ## Non-goals
 

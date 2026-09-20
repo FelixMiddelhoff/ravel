@@ -23,6 +23,34 @@ jobs:
         # disagrees with the others about what a seed produces.
         run: ctest --test-dir build -C ${{ matrix.config }} --output-on-failure
 
+  compilers:
+    # The oldest and newest compilers we claim, on the Ubuntu release that ships
+    # each, and one 32-bit build to shake out size_t / uint64_t assumptions.
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {name: gcc-10,  os: ubuntu-22.04, cxx: g++-10,     packages: g++-10}
+          - {name: gcc-11,  os: ubuntu-22.04, cxx: g++-11,     packages: g++-11}
+          - {name: gcc-14,  os: ubuntu-24.04, cxx: g++-14,     packages: g++-14}
+          - {name: clang-14, os: ubuntu-22.04, cxx: clang++-14, packages: clang-14}
+          - {name: clang-15, os: ubuntu-22.04, cxx: clang++-15, packages: clang-15}
+          - {name: clang-19, os: ubuntu-24.04, cxx: clang++-19, packages: clang-19}
+          - {name: gcc-13-i686, os: ubuntu-24.04, cxx: g++-13, packages: g++-13-multilib, flags: -m32}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install
+        run: sudo apt-get update && sudo apt-get install -y ${{ matrix.packages }}
+      - name: Configure
+        run: |
+          cmake -S . -B build-c -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=${{ matrix.cxx }}             -DCMAKE_CXX_FLAGS="${{ matrix.flags }}" -DRAVEL_WERROR=ON
+      - name: Build
+        run: cmake --build build-c
+      - name: Test
+        run: ctest --test-dir build-c --output-on-failure
+
   sanitizers:
     runs-on: ubuntu-latest
     strategy:

@@ -61,6 +61,9 @@ function(ravel_configure_library target)
     $<INSTALL_INTERFACE:include>
   )
   target_compile_features(${target} PUBLIC cxx_std_20)
+  # GCC 10 only ships <coroutine> behind this flag; from GCC 11 it is on with C++20.
+  target_compile_options(${target} PUBLIC
+    $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_LESS:$<CXX_COMPILER_VERSION>,11>>:-fcoroutines>)
   ravel_warnings(${target})
   target_link_libraries(${target} PUBLIC Threads::Threads)
   if(RAVEL_FUZZ)
