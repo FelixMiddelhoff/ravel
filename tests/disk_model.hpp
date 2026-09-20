@@ -28,6 +28,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <map>
 #include <optional>
 #include <set>
@@ -70,7 +71,9 @@ class DiskModel {
     if (!id) return {DiskStatus::NotFound, {}};
     const std::string bytes = contents(files_.at(*id));
     if (offset >= bytes.size()) return {DiskStatus::Ok, {}};
-    return {DiskStatus::Ok, bytes.substr(offset, length)};  // substr clamps the length.
+    const auto count = std::min<std::uint64_t>(length, std::numeric_limits<std::size_t>::max());
+    return {DiskStatus::Ok,
+            bytes.substr(static_cast<std::size_t>(offset), static_cast<std::size_t>(count))};  // Clamps.
   }
 
   DiskStatus sync(const std::string& path) {
@@ -164,7 +167,7 @@ class DiskModel {
           case 1: {
             const std::uint64_t sectors = (patch.data.size() + 511) / 512;
             const std::uint64_t keep = rng_.next_below(sectors) * 512;
-            if (keep > 0) overlay(file.stable, {patch.offset, patch.data.substr(0, keep)});
+            if (keep > 0) overlay(file.stable, {patch.offset, patch.data.substr(0, static_cast<std::size_t>(keep))});
             break;
           }
           default:
@@ -208,10 +211,9 @@ class DiskModel {
   using Names = std::map<std::string, int>;
 
   static void overlay(std::string& bytes, const Patch& patch) {
-    if (bytes.size() < patch.offset + patch.data.size()) {
-      bytes.resize(patch.offset + patch.data.size(), '\0');
-    }
-    bytes.replace(patch.offset, patch.data.size(), patch.data);
+    const auto offset = static_cast<std::size_t>(patch.offset);
+    if (bytes.size() < offset + patch.data.size()) bytes.resize(offset + patch.data.size(), '\0');
+    bytes.replace(offset, patch.data.size(), patch.data);
   }
 
   static std::string contents(const File& file) {
