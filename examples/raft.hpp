@@ -539,7 +539,7 @@ inline ravel::SimulationSetup setup(Config config, std::shared_ptr<History> hist
     sim.scheduler().spawn("chaos", [&sim, &nodes, config]() -> ravel::Task {
       for (int crash = 0; crash < config.crashes; ++crash) {
         co_await sim.scheduler().sleep(sim.rng().next_between(200, 800));
-        nodes[sim.rng().next_below(nodes.size())]->crash();
+        nodes[static_cast<std::size_t>(sim.rng().next_below(nodes.size()))]->crash();
       }
     });
 
