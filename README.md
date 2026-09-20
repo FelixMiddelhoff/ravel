@@ -15,6 +15,30 @@ macOS and Windows, including under ASan, UBSan and TSan. It has not been used
 outside this repository yet, so the API, the meaning of a seed and the C ABI
 may still change between minor versions. Requires C++20 (coroutines).
 
+## Help wanted: try it and tell me what breaks
+
+ravel has not been used outside this repository yet, and I would like it to be. If you
+build distributed or stateful C++ (a queue, a replicated store, a consensus
+implementation, anything with retries, timeouts or crash recovery), I would be glad if
+you tried it on a small piece of your code and told me how it went. Short reports are
+fine, and so is "I gave up at step 3".
+
+What helps most:
+
+- **Porting friction.** Where the [tutorial](docs/tutorial.md) or the
+  [porting guide](docs/porting.md) lost you, or an error message did not say what to do.
+- **A bug it found, or one it should have found and did not.**
+- **Wrong or surprising behavior:** a seed that does not reproduce, a shrink result that
+  looks too big, a platform or compiler that fails.
+- **Missing fault types or API you reached for.**
+
+Open an [issue](https://github.com/FelixMiddelhoff/ravel/issues) with what you tried and
+what happened. A failing seed and the compiler and OS are plenty. Pull requests are
+welcome too: [CONTRIBUTING.md](CONTRIBUTING.md) says how to build, test and where things
+live, and [docs/known-limitations.md](docs/known-limitations.md) lists what is known to be
+missing. For a security problem, see [SECURITY.md](SECURITY.md) instead of opening an
+issue.
+
 ## What this is
 
 FoundationDB/TigerBeetle-style deterministic simulation testing, for C++.
