@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>Ravel.Dst</id>
+    <version>$version$</version>
+    <authors>Felix Middelhoff</authors>
+    <license type="expression">MIT</license>
+    <projectUrl>https://github.com/FelixMiddelhoff/ravel</projectUrl>
+    <readme>docs\README.md</readme>
+    <description>Deterministic simulation testing for C++20: seeded scheduling, virtual time, network and disk faults, shrinking and replay. Native package for Visual Studio C++ projects (x64, MSVC, dynamic runtime /MD and /MDd).</description>
+    <tags>native C++ testing simulation deterministic fuzzing distributed-systems</tags>
+    <releaseNotes>https://github.com/FelixMiddelhoff/ravel/blob/master/CHANGELOG.md</releaseNotes>
+  </metadata>
+  <files>
+    <file src="stage\include\**" target="build\native\include" />
+    <file src="stage\lib\**" target="build\native\lib" />
+    <file src="Ravel.Dst.targets" target="build\native\Ravel.Dst.targets" />
+    <file src="..\..\README.md" target="docs\README.md" />
+    <file src="..\..\LICENSE" target="LICENSE.txt" />
+  </files>
+</package>

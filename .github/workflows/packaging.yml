@@ -7,6 +7,18 @@ on:
     paths: [ 'packaging/**', 'CMakeLists.txt', 'cmake/**', 'include/**', 'src/**', '.github/workflows/packaging.yml' ]
 
 jobs:
+  nuget:
+    # The Windows native package: pack it, then build and run a project that uses it.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Pack
+        shell: pwsh
+        run: ./packaging/nuget/pack.ps1 -Version 0.0.0-ci -Output nuget-out
+      - name: Build and run a project that uses the package
+        shell: pwsh
+        run: ./packaging/nuget/test.ps1 -Package nuget-out/Ravel.Dst.0.0.0-ci.nupkg
+
   conan:
     strategy:
       fail-fast: false

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Imported automatically by NuGet into C++ (vcxproj) projects that reference Ravel.Dst. -->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <RavelRoot>$(MSBuildThisFileDirectory)</RavelRoot>
+    <RavelConfig Condition="$(Configuration.Contains('Debug'))">Debug</RavelConfig>
+    <RavelConfig Condition="'$(RavelConfig)' == ''">Release</RavelConfig>
+  </PropertyGroup>
+
+  <Target Name="RavelCheckPlatform" BeforeTargets="ClCompile" Condition="'$(Platform)' != 'x64'">
+    <Error Text="Ravel.Dst only ships x64 libraries; this project builds for '$(Platform)'." />
+  </Target>
+
+  <ItemDefinitionGroup Condition="'$(Platform)' == 'x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(RavelRoot)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>$(RavelRoot)lib\x64\$(RavelConfig)\ravel.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+</Project>

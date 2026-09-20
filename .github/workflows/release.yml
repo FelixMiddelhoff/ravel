@@ -1,0 +1,126 @@
+name: release
+# Push a tag like v0.4.0 to release. Before anything is published this checks that
+# the version is the same everywhere, that the CHANGELOG has an entry for it, that the
+# soak workflow passed on this exact commit, and that the tests and the NuGet package
+# work. It then creates the GitHub release and attaches the package.
+# Publishing to nuget.org is deliberately NOT done here: it is public and cannot be
+# undone, so push the .nupkg by hand (see CONTRIBUTING.md, "Releasing").
+on:
+  push:
+    tags: [ 'v[0-9]+.[0-9]+.[0-9]+*' ]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Version is the same everywhere
+        id: version
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          bad=0
+          check() {  # file, text that must be in it
+            if ! grep -qF -- "$2" "$1"; then echo "::error file=$1::does not mention $2"; bad=1; fi
+          }
+          check CMakeLists.txt "VERSION $version)"
+          check packaging/conan/conanfile.py "version = \"$version\""
+          check packaging/vcpkg/ports/ravel/vcpkg.json "\"version\": \"$version\""
+          check CHANGELOG.md "## [$version]"
+          check CHANGELOG.md "[$version]: https://github.com/"
+          major="${version%%.*}"
+          # Before 1.0 the API, the C ABI and the meaning of a seed may change: pre-release.
+          if [ "$major" = "0" ]; then echo "prerelease=true" >> "$GITHUB_OUTPUT"; else echo "prerelease=false" >> "$GITHUB_OUTPUT"; fi
+          # 1.0 is a promise about the API, the C ABI and seeds: never by accident.
+          if [ "$major" != "0" ]; then
+            echo "::error::$GITHUB_REF_NAME is 1.0 or later, which needs the maintainer's explicit go-ahead. Remove this check in release.yml when that is given."
+            bad=1
+          fi
+          exit $bad
+      - name: The soak workflow passed on this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ok=$(gh run list --workflow soak.yml --commit "$GITHUB_SHA" --status success --json databaseId --jq 'length')
+          if [ "$ok" = "0" ]; then
+            echo "::error::No successful soak run for $GITHUB_SHA. Start it with: gh workflow run soak.yml --ref <branch>, wait for it, then push the tag again."
+            exit 1
+          fi
+
+  test:
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DRAVEL_SHARED=ON -DRAVEL_WERROR=ON
+      - name: Build
+        run: cmake --build build --config Release
+      - name: Test
+        run: ctest --test-dir build -C Release --output-on-failure
+
+  nuget:
+    needs: check
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Pack
+        shell: pwsh
+        run: ./packaging/nuget/pack.ps1 -Version "${{ needs.check.outputs.version }}" -Output nuget-out
+      - name: Build and run a project that uses the package
+        shell: pwsh
+        run: ./packaging/nuget/test.ps1 -Package "nuget-out/Ravel.Dst.${{ needs.check.outputs.version }}.nupkg"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nupkg
+          path: nuget-out/*.nupkg
+          if-no-files-found: error
+
+  release:
+    needs: [check, test, nuget]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v4
+        with:
+          name: nupkg
+          path: nuget-out
+      - name: Release notes from the CHANGELOG
+        run: |
+          version="${{ needs.check.outputs.version }}"
+          # The lines between "## [version]" and the next "## [".
+          awk -v h="## [$version]" '/^## [[]/ { keep = (index($0, h) == 1); next } keep && !/^\[[^]]+\]: http/' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then echo "::error::empty CHANGELOG section for $version"; exit 1; fi
+          cat notes.md
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          flags=""
+          if [ "${{ needs.check.outputs.prerelease }}" = "true" ]; then flags="--prerelease"; fi
+          gh release create "$GITHUB_REF_NAME" nuget-out/*.nupkg $flags --verify-tag \
+            --title "ravel ${{ needs.check.outputs.version }}" --notes-file notes.md
+      - name: Checksum of the source tarball, for the vcpkg port
+        run: |
+          curl -sSL "https://github.com/${{ github.repository }}/archive/refs/tags/${GITHUB_REF_NAME}.tar.gz" -o source.tar.gz
+          sum=$(sha512sum source.tar.gz | cut -d' ' -f1)
+          {
+            echo "### Next steps"
+            echo "- vcpkg: put this SHA-512 in \`packaging/vcpkg/ports/ravel/portfile.cmake\`: \`$sum\`"
+            echo "- NuGet: \`dotnet nuget push nuget-out/Ravel.Dst.${{ needs.check.outputs.version }}.nupkg --source https://api.nuget.org/v3/index.json --api-key <key>\` (download the package from the release; this cannot be undone, only unlisted)"
+          } | tee -a "$GITHUB_STEP_SUMMARY"

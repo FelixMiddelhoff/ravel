@@ -110,7 +110,12 @@ still holds, not just that the change compiles.
    Windows, the thread-pool stress under ThreadSanitizer, and the sanitized soak. Release
    only if it is green, and link the run in the release notes. For a bigger local run:
    `ravel_soak 100000`.
-4. Tag `vX.Y.Z` and push the tag, then create the release.
+4. Tag `vX.Y.Z` and push the tag. The `release` workflow then checks that the version, the
+   CHANGELOG entry and the soak run for that commit are in order, runs the tests, packs and
+   tests the NuGet package (`packaging/nuget`), and creates the GitHub release with the package
+   attached. It does not publish to nuget.org: download `Ravel.Dst.X.Y.Z.nupkg` from the
+   release and run `dotnet nuget push` yourself (public, and a version can be unlisted but never
+   deleted). It also refuses tags from 1.0 on; remove that check when the maintainer says so.
 5. Compute the SHA-512 of the tag's tarball and put it in
    `packaging/vcpkg/ports/ravel/portfile.cmake`; verify with a local vcpkg install.
 

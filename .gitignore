@@ -14,3 +14,9 @@ __pycache__/
 /ravel-traces/
 packaging/**/build/
 CMakeUserPresets.json
+packaging/nuget/stage/
+packaging/nuget/unpacked/
+packaging/nuget/test_package/x64/
+packaging/nuget/test_package/obj/
+nuget-out/
+packaging/nuget/test_package/consumer/

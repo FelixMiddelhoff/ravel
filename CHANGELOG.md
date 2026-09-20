@@ -10,6 +10,12 @@ is listed under "Changed" or "Removed" in the release that makes it.
 
 ### Added
 
+- NuGet package `Ravel.Dst` for Visual Studio C++ projects (x64, static library with the
+  dynamic MSVC runtime, Release and Debug), built by `packaging/nuget/pack.ps1`. Not on
+  nuget.org yet; it is attached to each GitHub release.
+- `release.yml`: pushing a `vX.Y.Z` tag checks the version everywhere, the CHANGELOG entry and a
+  green soak run on that commit, tests on three systems, packs and tests the NuGet package,
+  and creates the GitHub release.
 - CMake option `RAVEL_COVERAGE` and a CI job that builds with coverage, runs the
   tests and uploads an HTML report.
 - CMake option `RAVEL_WERROR` (warnings as errors, used in CI). Every target now builds
