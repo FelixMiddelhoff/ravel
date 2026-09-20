@@ -31,14 +31,18 @@ permissions, bit rot, misdirected writes, read errors, and more). It has not bee
 checked against real hardware or a real filesystem; it is checked against a second
 implementation of the same rules written by the same author.
 
-**Network.** A channel is one-way and in memory. It can lose messages, delay them by a
-uniform amount, and (if you allow it) reorder them. Not modeled: duplicated or corrupted
-messages, bandwidth limits, connection setup and teardown, and partitions as a built-in
-concept (you can model one by dropping messages from your own code). Each channel is
-independent of the others.
+**Network.** A channel is one-way and in memory, and carries opaque strings. Each message
+is lost with a fixed probability, otherwise delayed by a uniform random amount, and
+delivered in send order unless you allow reordering. The fault settings are fixed when the
+channel is created, and each channel is independent of the others. Only one task can wait
+to receive on a channel at a time. Not modeled: duplicated or corrupted messages,
+bandwidth limits, connection setup and teardown, and partitions (you can model one by
+dropping messages in your own code).
 
-**Time.** Virtual, and it moves only when every task is waiting. There is no clock skew
-or drift between nodes, and a task that computes for a long time takes no virtual time.
+**Time.** Virtual. It stands still while any task can run, and when none can it jumps to
+the next timer (a sleep ending, a message arriving, a disk operation finishing). There is
+no clock skew or drift between nodes, and a task that computes for a long time takes no
+virtual time.
 
 **Scheduling.** Tasks are cooperative coroutines on one thread. A task is only
 interrupted where it awaits, so a race that needs preemption inside a plain function is
