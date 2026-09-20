@@ -50,14 +50,29 @@ void setup_three_delays(ravel::Simulation& sim) {
   sim.add_invariant("delays_stay_short", [total] { return total < 30; });
 }
 
+// Two delays, each 0..20, that must not add up to 25 or more.
+void setup_delays_that_add_up(ravel::Simulation& sim) {
+  const std::uint64_t first = sim.rng().next_between(0, 20);
+  const std::uint64_t second = sim.rng().next_between(0, 20);
+  sim.add_invariant("delays_stay_short", [first, second] { return first + second < 25; });
+}
+
+// Two draws that fail only when equal (and at least 3).
+void setup_matching_draws(ravel::Simulation& sim) {
+  const std::uint64_t first = sim.rng().next_between(0, 20);
+  const std::uint64_t second = sim.rng().next_between(0, 20);
+  sim.add_invariant("draws_differ", [first, second] { return !(first == second && first >= 3); });
+}
+
 using Setup = void (*)(ravel::Simulation&);
 
-std::uint64_t first_failing_seed(Setup setup) {
+// The n-th (from 0) failing seed: different seeds start the shrinker from
+// different lists, which reach different branches of its passes.
+std::uint64_t failing_seed(Setup setup, std::size_t n) {
   ravel::RunnerOptions options;
   options.seed_count = 5000;
-  options.stop_at_first_failure = true;
   const ravel::RunnerReport report = ravel::run_seeds(setup, options);
-  return report.failures.empty() ? 0 : report.failures.front().seed;
+  return n < report.failures.size() ? report.failures[n].seed : 0;
 }
 
 std::string text_of(const ravel::Choices& choices) {
@@ -91,6 +106,20 @@ const std::vector<Golden> kGolden = {
     {"far_apart", setup_far_apart, 1, 9, 9, true, {120}},
     {"three_delays", setup_three_delays, 1, 100000, 122, false, {10, 20}},
     {"three_delays", setup_three_delays, 2, 100000, 122, false, {10, 20}},
+    {"three_delays", setup_three_delays, 1, 100000, 118, false, {10, 20}},
+    {"three_delays", setup_three_delays, 1, 100000, 81, false, {10, 20}},
+    {"delays_that_add_up", setup_delays_that_add_up, 1, 100000, 91, false, {5, 20}},
+    {"delays_that_add_up", setup_delays_that_add_up, 1, 100000, 123, false, {5, 20}},
+    {"delays_that_add_up", setup_delays_that_add_up, 1, 100000, 78, false, {5, 20}},
+    {"delays_that_add_up", setup_delays_that_add_up, 1, 100000, 107, false, {5, 20}},
+    {"matching_draws", setup_matching_draws, 1, 100000, 88, false, {3, 3}},
+    {"matching_draws", setup_matching_draws, 1, 100000, 14, false, {3, 3}},
+    {"matching_draws", setup_matching_draws, 1, 100000, 76, false, {3, 3}},
+    {"matching_draws", setup_matching_draws, 1, 100000, 48, false, {3, 3}},
+    {"far_apart", setup_far_apart, 1, 100000, 60, false, {100}},
+    {"far_apart", setup_far_apart, 1, 100000, 52, false, {100}},
+    {"long_run", setup_long_run, 1, 100000, 224, false, {16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9}},
+    {"long_run", setup_long_run, 1, 100000, 217, false, {16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9}},
     // GOLDEN-END
 };
 
@@ -108,6 +137,7 @@ TEST(shrink_search_is_pinned_on_setups_of_different_shapes) {
     Setup setup;
     unsigned threads;
     std::uint64_t budget;
+    std::size_t nth = 0;
   };
   const Case cases[] = {
       {"big_total", setup_big_total, 1, 2000},
@@ -120,13 +150,27 @@ TEST(shrink_search_is_pinned_on_setups_of_different_shapes) {
       {"far_apart", setup_far_apart, 1, 9},
       {"three_delays", setup_three_delays, 1, 100000},
       {"three_delays", setup_three_delays, 2, 100000},
+      {"three_delays", setup_three_delays, 1, 100000, 1},
+      {"three_delays", setup_three_delays, 1, 100000, 2},
+      {"delays_that_add_up", setup_delays_that_add_up, 1, 100000, 0},
+      {"delays_that_add_up", setup_delays_that_add_up, 1, 100000, 1},
+      {"delays_that_add_up", setup_delays_that_add_up, 1, 100000, 2},
+      {"delays_that_add_up", setup_delays_that_add_up, 1, 100000, 3},
+      {"matching_draws", setup_matching_draws, 1, 100000, 0},
+      {"matching_draws", setup_matching_draws, 1, 100000, 1},
+      {"matching_draws", setup_matching_draws, 1, 100000, 2},
+      {"matching_draws", setup_matching_draws, 1, 100000, 3},
+      {"far_apart", setup_far_apart, 1, 100000, 1},
+      {"far_apart", setup_far_apart, 1, 100000, 2},
+      {"long_run", setup_long_run, 1, 100000, 1},
+      {"long_run", setup_long_run, 1, 100000, 2},
   };
   std::size_t index = 0;
   for (const Case& c : cases) {
     ravel::ShrinkOptions options;
     options.threads = c.threads;
     options.max_attempts = c.budget;
-    const ravel::ShrinkResult shrunk = ravel::shrink(c.setup, first_failing_seed(c.setup), options);
+    const ravel::ShrinkResult shrunk = ravel::shrink(c.setup, failing_seed(c.setup, c.nth), options);
     if (kPrinting) {
       std::printf("    {\"%s\", %s, %u, %llu, %llu, %s, %s},\n", c.name,
                   (std::string("setup_") + c.name).c_str(), c.threads,

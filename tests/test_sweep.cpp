@@ -273,6 +273,24 @@ TEST(sweep_shows_only_the_first_five_determinism_problems) {
   const Outcome outcome = sweep(leaky, {"--check-determinism", "--seeds", "8", "--threads", "1"});
   CHECK(outcome.status == 1);
   CHECK(contains(outcome.text, "... and 3 more"));
+  std::size_t listed = 0;
+  for (std::size_t at = outcome.text.find("\n  seed "); at != std::string::npos;
+       at = outcome.text.find("\n  seed ", at + 1)) {
+    ++listed;
+  }
+  CHECK(listed == 5);  // Only the first five problems are spelled out.
+}
+
+TEST(sweep_lists_every_problem_when_there_are_exactly_five) {
+  const auto leaky = [](ravel::Simulation& sim) {
+    static int runs = 0;
+    const ravel::VirtualClock::Tick nap = (++runs % 2) ? 5 : 9;
+    sim.scheduler().spawn("t", [&sim, nap]() -> ravel::Task { co_await sim.scheduler().sleep(nap); });
+  };
+  const Outcome outcome = sweep(leaky, {"--check-determinism", "--seeds", "5", "--threads", "1"});
+  CHECK(outcome.status == 1);
+  CHECK(contains(outcome.text, "5 of 5 seeds have problems"));
+  CHECK(!contains(outcome.text, "more"));
 }
 
 TEST(sweep_annotates_failures_on_github_actions) {

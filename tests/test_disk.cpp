@@ -212,6 +212,25 @@ TEST(disk_crash_outcomes_follow_the_recorded_choices) {
   CHECK(crash_with({1, 1, 0}) == 0);     // Torn before the first sector: lost.
 }
 
+TEST(disk_torn_write_sector_count_rounds_up_exactly) {
+  // 1022 bytes are two sectors (the second partly filled), so a tear can only
+  // keep 0 or 512 bytes; a third sector would let it keep the whole write.
+  const auto crash_with = [](std::size_t size, ravel::Choices choices) {
+    ravel::Simulation sim(0, ravel::SimulationOptions{.replay_choices = std::move(choices)});
+    ravel::Disk& disk = sim.add_disk("d");
+    run_with_disk(sim, disk, [&]() -> ravel::Task {
+      co_await disk.write("f", 0, std::string(size, 'x'));
+      disk.crash();
+    });
+    return disk.durable_contents("f").size();
+  };
+  CHECK(crash_with(1022, {1, 1, 2}) == 512);
+  CHECK(crash_with(1024, {1, 1, 2}) == 512);
+  CHECK(crash_with(1025, {1, 1, 2}) == 1024);
+  CHECK(crash_with(1023, {1, 1, 2}) == 512);
+  CHECK(crash_with(512, {1, 1, 1}) == 0);  // One sector: only "lost" is possible.
+}
+
 TEST(disk_crash_fails_operations_still_in_flight) {
   ravel::Simulation sim(1);
   ravel::Disk& disk = sim.add_disk("d", {.latency_min = 10, .latency_max = 10});
