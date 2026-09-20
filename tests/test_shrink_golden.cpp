@@ -64,6 +64,16 @@ void setup_matching_draws(ravel::Simulation& sim) {
   sim.add_invariant("draws_differ", [first, second] { return !(first == second && first >= 3); });
 }
 
+// Two draws, each 0..6, that fail only as (5, 1) or (4, 2). From (5, 1) the
+// only step that still fails is (4, 2): lower the earlier draw by one and raise
+// the later one by one. No single-draw step or other pair step finds it.
+void setup_pair_swap(ravel::Simulation& sim) {
+  const std::uint64_t first = sim.rng().next_between(0, 6);
+  const std::uint64_t second = sim.rng().next_between(0, 6);
+  const bool bad = (first == 5 && second == 1) || (first == 4 && second == 2);
+  sim.add_invariant("not_a_bad_pair", [bad] { return !bad; });
+}
+
 using Setup = void (*)(ravel::Simulation&);
 
 // The n-th (from 0) failing seed: different seeds start the shrinker from
@@ -188,4 +198,24 @@ TEST(shrink_search_is_pinned_on_setups_of_different_shapes) {
     CHECK(shrunk.budget_exhausted == g.exhausted);
     CHECK(shrunk.choices == g.choices);
   }
+}
+
+// Every failing seed starts at (5, 1) or (4, 2) and must end at (4, 2). The
+// attempt count from (5, 1) is pinned too, so a repeated or missing pair
+// candidate (lowering both by one is the same as lowering by the common
+// amount) changes it.
+TEST(shrink_pair_pass_can_lower_one_draw_and_raise_the_other) {
+  ravel::RunnerOptions runner;
+  runner.seed_count = 500;
+  const ravel::RunnerReport report = ravel::run_seeds(setup_pair_swap, runner);
+  CHECK(!report.failures.empty());
+  std::uint64_t attempts_from_swap = 0;
+  for (const auto& failure : report.failures) {
+    ravel::ShrinkOptions options;
+    options.threads = 1;
+    const ravel::ShrinkResult shrunk = ravel::shrink(setup_pair_swap, failure.seed, options);
+    CHECK(shrunk.choices == (ravel::Choices{4, 2}));
+    if (shrunk.original_choices == ravel::Choices{5, 1}) attempts_from_swap = shrunk.attempts;
+  }
+  CHECK(attempts_from_swap == 31);
 }
